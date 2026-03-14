@@ -59,7 +59,7 @@ export const parseFinanceDump = action({
     }
     const accounts: { name: string; type: "checking" | "savings" | "investment" | "debt" | "other"; balance: number }[] = [];
     for (const item of parsed) {
-      if (!item || typeof item !== "object" || !("name" in item) || !("type" in item) || !("balance" in item")) continue;
+      if (!item || typeof item !== "object" || !('name' in item) || !('type' in item) || !('balance' in item)) continue;
       const name = String((item as { name?: unknown }).name ?? "").trim();
       const typeRaw = String((item as { type?: unknown }).type ?? "other").toLowerCase();
       const type = ACCOUNT_TYPES.includes(typeRaw as (typeof ACCOUNT_TYPES)[number])
