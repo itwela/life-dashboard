@@ -1,26 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-geist: "Geist", sans-serif;
+  /* Frutiger Aero dark palette */
+  --aero-bg: #020b18;
+  --aero-bg-mid: #041223;
+  --aero-bg-light: #061a2e;
+  --aero-accent: #60c8ff;
+  --aero-accent-dim: rgba(96, 200, 255, 0.35);
+  --aero-glass: rgba(255, 255, 255, 0.06);
+  --aero-border: rgba(255, 255, 255, 0.08);
+  --aero-text: #e2f0ff;
+  --aero-text-muted: rgba(226, 240, 255, 0.5);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  background: var(--aero-bg);
+  color: var(--aero-text);
+  min-height: 100vh;
 }
+
+/* Frutiger Aero scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(96, 200, 255, 0.25);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 200, 255, 0.45);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Recharts: tooltip and hover cursor match Frutiger Aero (no white) */
+.recharts-tooltip-wrapper,
+.recharts-default-tooltip {
+  background: rgba(2, 11, 24, 0.96) !important;
+  border: 1px solid rgba(96, 200, 255, 0.25) !important;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--aero-text);
+}
+.recharts-tooltip-cursor,
+.recharts-rectangle.recharts-tooltip-cursor {
+  fill: rgba(6, 26, 46, 0.9) !important;
+  stroke: rgba(96, 200, 255, 0.2);
+}
+
