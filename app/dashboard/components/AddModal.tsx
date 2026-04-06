@@ -10,6 +10,7 @@ interface AddModalProps {
   accentColor: string;
   children: ReactNode;
   submitLabel?: string;
+  size?: "md" | "lg";
 }
 
 export default function AddModal({
@@ -20,6 +21,7 @@ export default function AddModal({
   accentColor,
   children,
   submitLabel = "Save",
+  size = "md",
 }: AddModalProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -41,7 +43,7 @@ export default function AddModal({
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+        className={`relative w-full ${size === "lg" ? "max-w-xl" : "max-w-md"} rounded-2xl overflow-hidden shadow-2xl`}
         style={{
           background: "linear-gradient(135deg, rgba(10,20,40,0.95) 0%, rgba(5,15,30,0.98) 100%)",
           border: "1px solid rgba(255,255,255,0.15)",
@@ -127,6 +129,32 @@ export function FormInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder:text-white/25 outline-none transition-all focus:ring-1 focus:ring-white/20"
+      style={{
+        background: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.10)",
+      }}
+    />
+  );
+}
+
+export function FormTextarea({
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder:text-white/25 outline-none transition-all focus:ring-1 focus:ring-white/20 resize-none"
       style={{
         background: "rgba(255,255,255,0.06)",
         border: "1px solid rgba(255,255,255,0.10)",

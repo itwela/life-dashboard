@@ -46,12 +46,12 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
   const [termsDoneInput, setTermsDoneInput] = useState(String(schoolProgress.termsCompleted));
   const [termsTotalInput, setTermsTotalInput] = useState(String(schoolProgress.termsTotal));
 
-  const pct         = schoolProgress.totalCU > 0 ? Math.round((schoolProgress.earnedCU / schoolProgress.totalCU) * 100) : 0;
-  const cuRemaining = schoolProgress.totalCU - schoolProgress.earnedCU;
   const current     = courses.filter((c) => c.status === "in_progress");
   const completed   = courses.filter((c) => c.status === "completed");
   const queued      = courses.filter((c) => c.status === "not_started");
-  const queuedCount = schoolProgress.totalCU - schoolProgress.earnedCU - schoolProgress.activeCount;
+  const earnedCU    = completed.reduce((s, c) => s + c.creditUnits, 0);
+  const pct         = schoolProgress.totalCU > 0 ? Math.round((earnedCU / schoolProgress.totalCU) * 100) : 0;
+  const cuRemaining = schoolProgress.totalCU - earnedCU;
 
   function openAdd() { setEditing(null); setName(""); setCu("3"); setStatus("not_started"); setNotes(""); setOpen(true); }
   function openEdit(c: Doc<"courses">) { setEditing(c); setName(c.name); setCu(String(c.creditUnits)); setStatus(c.status); setNotes(c.notes ?? ""); setOpen(true); }
@@ -197,12 +197,12 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
             </button>
           </div>
 
-          {/* Stats pills — from Convex schoolProgress */}
+          {/* Stats pills — derived from live course data */}
           <div className="grid grid-cols-3 gap-2 shrink-0">
             {[
-              { label: "Done", value: schoolProgress.earnedCU, color: "#4ade80" },
-              { label: "Active", value: schoolProgress.activeCount, color: ACCENT },
-              { label: "Queued", value: queuedCount >= 0 ? queuedCount : 0, color: "#94a3b8" },
+              { label: "Done", value: completed.length, color: "#4ade80" },
+              { label: "Active", value: current.length, color: ACCENT },
+              { label: "Queued", value: queued.length, color: "#94a3b8" },
             ].map((s) => (
               <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>

@@ -12,21 +12,69 @@ const SYSTEM_PROMPT = `You are an assistant for a life dashboard. The user will 
 
 Supported actions and payloads (use exact keys, numbers for numeric fields):
 - add_workout: { "exerciseType": string, "duration": number, "notes": optional string, "date": optional number (ms, for specific day) }
-- add_account: { "name": string, "type": "checking"|"savings"|"investment"|"debt"|"other", "balance": number }
-- add_transaction: { "label": string, "amount": number, "type": "income"|"expense", "category": string (default "General") }
+- add_account: { "name": string, "type": "checking"|"savings"|"investment"|"debt"|"other", "balance": number, "investmentType": optional "brokerage"|"401k"|"ira"|"crypto"|"other" (when type is investment) }
 - add_book: { "title": string, "author": string, "status": "want_to_read"|"reading"|"completed", "notes": optional string }
 - add_content: { "title": string, "platform": string, "type": "beat"|"video"|"article"|"other", "status": "idea"|"in_progress"|"published" }
 - add_project: { "name": string, "description": optional string, "status": "active"|"paused"|"shipped", "revenue": optional number, "notes": optional string }
 - set_school_progress: { "totalCU": number, "earnedCU": number, "activeCount": number, "termsCompleted": number, "termsTotal": number }
 - add_missed_day: { "date": number } — date = start of day in ms (user's timezone)
 - remove_missed_day: { "date": number }
-- add_accounts_bulk: { "accounts": [ { "name": string, "type": "checking"|"savings"|"investment"|"debt"|"other", "balance": number } ] } — for multiple accounts in one message
+- add_accounts_bulk: { "accounts": [ { "name": string, "type": "checking"|"savings"|"investment"|"debt"|"other", "balance": number, "investmentType": optional "brokerage"|"401k"|"ira"|"crypto"|"other" } ] } — for multiple accounts in one message
 
 If the user says multiple things (e.g. "add chase 500 and amex debt 1200"), use multiple actions or add_accounts_bulk.
 If unclear or just chat, return { "actions": [] }.
 Today's date for "today" or "this morning": use current day start in UTC for date fields if needed.`;
 
 type ActionItem = { action: string; payload: Record<string, unknown> };
+
+export const expandContentIdea = action({
+  args: {
+    title: v.string(),
+    platform: v.string(),
+    type: v.string(),
+    brainstorm: v.string(),
+  },
+  handler: async (ctx, { title, platform, type, brainstorm }): Promise<{ betterTitle: string; plan: string }> => {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error("OpenRouter API key not set.");
+
+    const prompt = `You are a content strategist helping someone plan a ${type} for ${platform}.
+Current title: "${title}"
+Their thoughts: "${brainstorm}"
+
+Write:
+1. A compelling, specific title that hooks people in (not generic, make it personal and real)
+2. A structured content plan with these exact sections:
+HOOK: (the opening line or sentence that grabs attention)
+CORE MESSAGE: (the one thing you want people to take away)
+KEY POINTS:
+- (point 1)
+- (point 2)
+- (point 3)
+CALL TO ACTION: (what you want the audience to feel or do after)
+PERSONAL NOTES: (anything specific to remember when writing/recording this)
+
+Respond with ONLY valid JSON, no markdown fences:
+{ "betterTitle": "...", "plan": "..." }`;
+
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: process.env.OPENROUTER_FINANCE_MODEL ?? DEFAULT_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`OpenRouter error: ${res.status}`);
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+    const json = content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(json) as { betterTitle?: string; plan?: string };
+    return { betterTitle: parsed.betterTitle ?? title, plan: parsed.plan ?? "" };
+  },
+});
 
 export const chat = action({
   args: {
@@ -86,14 +134,16 @@ export const chat = action({
             break;
           }
           case "add_account": {
-            const p = payload as { name?: string; type?: string; balance?: number };
+            const p = payload as { name?: string; type?: string; balance?: number; investmentType?: string };
             const type = ["checking", "savings", "investment", "debt", "other"].includes(String(p.type)) ? p.type : "other";
+            const invType = ["brokerage", "401k", "ira", "crypto", "other"].includes(String(p.investmentType)) ? p.investmentType : undefined;
             await ctx.runMutation(api.dashboard.upsertAccount, {
               name: String(p.name ?? "Account"),
               type: type as "checking" | "savings" | "investment" | "debt" | "other",
               balance: Number(p.balance) || 0,
+              investmentType: type === "investment" && invType ? invType : undefined,
             });
-            results.push(`Added account: ${p.name ?? "Account"} (${type}) $${Number(p.balance) || 0}`);
+            results.push(`Added account: ${p.name ?? "Account"} (${type}${invType ? ` ${invType}` : ""}) $${Number(p.balance) || 0}`);
             break;
           }
           case "add_transaction": {
@@ -177,15 +227,21 @@ export const chat = action({
             break;
           }
           case "add_accounts_bulk": {
-            const p = payload as { accounts?: Array<{ name?: string; type?: string; balance?: number }> };
+            const p = payload as { accounts?: Array<{ name?: string; type?: string; balance?: number; investmentType?: string }> };
             const list = Array.isArray(p.accounts) ? p.accounts : [];
+            const invTypes = ["brokerage", "401k", "ira", "crypto", "other"];
             const accounts = list
               .filter((a) => a && typeof a === "object")
-              .map((a) => ({
-                name: String(a.name ?? "Account"),
-                type: ["checking", "savings", "investment", "debt", "other"].includes(String(a.type)) ? (a.type as "checking" | "savings" | "investment" | "debt" | "other") : "other" as const,
-                balance: Number(a.balance) || 0,
-              }));
+              .map((a) => {
+                const type = ["checking", "savings", "investment", "debt", "other"].includes(String(a.type)) ? (a.type as "checking" | "savings" | "investment" | "debt" | "other") : "other";
+                const invType = type === "investment" && invTypes.includes(String(a.investmentType)) ? a.investmentType : undefined;
+                return {
+                  name: String(a.name ?? "Account"),
+                  type,
+                  balance: Number(a.balance) || 0,
+                  ...(invType != null && { investmentType: invType }),
+                };
+              });
             if (accounts.length > 0) {
               await ctx.runMutation(internal.dashboard.upsertAccountsFromDump, { accounts });
               results.push(`Added/updated ${accounts.length} account(s).`);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
@@ -12,7 +12,6 @@ import ProjectsSection from "./components/ProjectsSection";
 import BentoCard from "./components/BentoCard";
 import AIAssistant from "./components/AIAssistant";
 import {
-  FinancesBarChart,
   SchoolDonutChart,
   FitnessBarChart,
   ReadingDonutChart,
@@ -35,11 +34,10 @@ const CARD_CONFIG: { key: TabKey; title: string; subtitle: string; accent: strin
 ];
 
 export default function DashboardPage() {
-  const [viewMode, setViewMode] = useState<"overview" | "full">("overview");
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
 
   const accounts = useQuery(api.dashboard.getAccounts) ?? [];
-  const transactions = useQuery(api.dashboard.getTransactions) ?? [];
+  const financeFiles = useQuery(api.dashboard.getFinanceFiles) ?? [];
   const courses = useQuery(api.dashboard.getCourses) ?? [];
   const schoolProgress = useQuery(api.dashboard.getSchoolProgress);
   const books = useQuery(api.dashboard.getBooks) ?? [];
@@ -50,7 +48,9 @@ export default function DashboardPage() {
   const projects = useQuery(api.dashboard.getProjects) ?? [];
 
   const upsertAccount = useMutation(api.dashboard.upsertAccount);
-  const addTransaction = useMutation(api.dashboard.addTransaction);
+  const generateUploadUrl = useMutation(api.dashboard.generateUploadUrl);
+  const saveFinanceFile = useMutation(api.dashboard.saveFinanceFile);
+  const deleteFinanceFile = useMutation(api.dashboard.deleteFinanceFile);
   const upsertCourse = useMutation(api.dashboard.upsertCourse);
   const setSchoolProgress = useMutation(api.dashboard.setSchoolProgress);
   const seedSchoolData = useMutation(api.dashboard.seedSchoolData);
@@ -60,20 +60,18 @@ export default function DashboardPage() {
   const removeMissedDay = useMutation(api.dashboard.removeMissedDay);
   const addContentPost = useMutation(api.dashboard.addContentPost);
   const updateContentPost = useMutation(api.dashboard.updateContentPost);
+  const expandContentIdea = useAction(api.aiAssistant.expandContentIdea);
   const upsertProject = useMutation(api.dashboard.upsertProject);
 
-  const netWorth = accounts.reduce(
-    (s, a) => (a.type === "debt" ? s - a.balance : s + a.balance),
-    0
-  );
+  const financesCash = accounts.filter((a) => a.type === "checking" || a.type === "savings").reduce((s, a) => s + a.balance, 0);
+  const financesInvestments = accounts.filter((a) => a.type === "investment").reduce((s, a) => s + a.balance, 0);
+  const financesDebt = accounts.filter((a) => a.type === "debt").reduce((s, a) => s + a.balance, 0);
+  const netWorth = financesCash + financesInvestments - financesDebt + accounts.filter((a) => a.type === "other").reduce((s, a) => s + a.balance, 0);
   const earnedCU = courses.filter((c) => c.status === "completed").reduce((s, c) => s + c.creditUnits, 0);
+  const activeCourseCount = courses.filter((c) => c.status === "in_progress").length;
+  const notStartedCourseCount = courses.filter((c) => c.status === "not_started").length;
+  const completedCourseCount = courses.filter((c) => c.status === "completed").length;
   const booksRead = books.filter((b) => b.status === "completed").length;
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-  const monthTx = transactions.filter((t) => t.date >= startOfMonth.getTime());
-  const monthIncome = monthTx.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const monthExpense = monthTx.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -107,8 +105,8 @@ export default function DashboardPage() {
   const shippedProjects = projects.filter((p) => p.status === "shipped").length;
 
   const wgu = schoolProgress && "totalCU" in schoolProgress ? schoolProgress : WGU_DEFAULTS;
-  const wguPct = wgu.totalCU > 0 ? Math.round((wgu.earnedCU / wgu.totalCU) * 100) : 0;
-  const wguCuLeft = wgu.totalCU - wgu.earnedCU;
+  const wguPct = wgu.totalCU > 0 ? Math.round((earnedCU / wgu.totalCU) * 100) : 0;
+  const wguCuLeft = wgu.totalCU - earnedCU;
 
   // Workouts per day for last 7 days (for fitness chart)
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -127,8 +125,8 @@ export default function DashboardPage() {
   }));
 
   const summary: Record<TabKey, { line1: string; line2?: string }> = {
-    finances: { line1: fmt(netWorth), line2: `Income ${fmt(monthIncome)} · Out ${fmt(monthExpense)}` },
-    school: { line1: `${wguPct}% · ${wguCuLeft} CU left`, line2: `${wgu.termsCompleted}/${wgu.termsTotal} terms · ${wgu.earnedCU} done` },
+    finances: { line1: fmt(netWorth), line2: `Cash ${fmt(financesCash)} · Inv ${fmt(financesInvestments)} · Debt -${fmt(financesDebt)}` },
+    school: { line1: `${wguPct}% · ${wguCuLeft} CU left`, line2: `${activeCourseCount} active · ${completedCourseCount} done · ${notStartedCourseCount} not started` },
     fitness: { line1: `${streak} day streak`, line2: `${workouts.length} workouts logged` },
     reading: { line1: `${booksRead} read`, line2: `${books.filter((b) => b.status === "reading").length} reading now` },
     projects: { line1: `${activeProjects} active`, line2: `${shippedProjects} shipped` },
@@ -203,38 +201,6 @@ export default function DashboardPage() {
             The Process
           </span>
         </div>
-        <div className="flex items-center gap-1.5 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.12)" }}>
-          <button
-            onClick={() => setViewMode("full")}
-            className={`px-4 py-2 text-xs font-semibold transition-all ${
-              viewMode === "full"
-                ? "text-[#60c8ff]"
-                : "text-white/40 hover:text-white/70 hover:bg-white/5"
-            }`}
-            style={
-              viewMode === "full"
-                ? { background: "rgba(96,200,255,0.15)", borderRight: "1px solid rgba(255,255,255,0.08)" }
-                : {}
-            }
-          >
-            Full view
-          </button>
-          <button
-            onClick={() => setViewMode("overview")}
-            className={`px-4 py-2 text-xs font-semibold transition-all ${
-              viewMode === "overview"
-                ? "text-[#60c8ff]"
-                : "text-white/40 hover:text-white/70 hover:bg-white/5"
-            }`}
-            style={
-              viewMode === "overview"
-                ? { background: "rgba(96,200,255,0.15)" }
-                : {}
-            }
-          >
-            Overview
-          </button>
-        </div>
       </header>
 
       {/* Quote — Musashi (Baki): training is what a proper swordsman must do → applied to building wealth */}
@@ -265,9 +231,7 @@ export default function DashboardPage() {
         >
           {CARD_CONFIG.map((card) => {
             const chart =
-              card.key === "finances" ? (
-                <FinancesBarChart income={monthIncome} expense={monthExpense} accent={card.accent} />
-              ) : card.key === "school" ? (
+              card.key === "finances" ? null : card.key === "school" ? (
                 <SchoolDonutChart percentComplete={wguPct} accent={card.accent} />
               ) : card.key === "fitness" ? (
                 <FitnessBarChart data={workoutCountByDay} accent={card.accent} />
@@ -319,10 +283,7 @@ export default function DashboardPage() {
             style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(2,11,24,0.9)", backdropFilter: "blur(12px)" }}
           >
             <button
-              onClick={() => {
-                setFullViewSection(null);
-                setViewMode("overview");
-              }}
+              onClick={() => setFullViewSection(null)}
               className="text-sm text-white/60 hover:text-[#60c8ff] transition-colors"
             >
               ← Back to Overview
@@ -337,9 +298,11 @@ export default function DashboardPage() {
               {fullViewSection === "finances" && (
                 <FinancesSection
                   accounts={accounts}
-                  transactions={transactions}
+                  financeFiles={financeFiles}
                   upsertAccount={upsertAccount}
-                  addTransaction={addTransaction}
+                  generateUploadUrl={generateUploadUrl}
+                  saveFinanceFile={saveFinanceFile}
+                  deleteFinanceFile={deleteFinanceFile}
                 />
               )}
               {fullViewSection === "school" && (
@@ -372,46 +335,9 @@ export default function DashboardPage() {
                   posts={contentPosts}
                   addContentPost={addContentPost}
                   updateContentPost={updateContentPost}
+                  expandContentIdea={expandContentIdea}
                 />
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Full view mode — section picker */}
-      {viewMode === "full" && !fullViewSection && (
-        <div
-          className="fixed inset-0 z-40 flex flex-col p-6 overflow-y-auto"
-          style={{ background: "rgba(2,11,24,0.92)", backdropFilter: "blur(8px)" }}
-        >
-          <div className="max-w-2xl mx-auto w-full">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-white/90">Choose an area</h2>
-              <button
-                onClick={() => setViewMode("overview")}
-                className="text-sm text-white/50 hover:text-[#60c8ff] transition-colors"
-              >
-                ← Overview
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {CARD_CONFIG.map((card) => (
-                <button
-                  key={card.key}
-                  onClick={() => setFullViewSection(card.key)}
-                  className="rounded-xl p-5 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    boxShadow: "0 0 20px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  <span className="text-2xl mb-3 block">{card.icon}</span>
-                  <p className="text-sm font-semibold text-white/95">{card.title}</p>
-                  <p className="text-xs text-white/45 mt-1">Know more →</p>
-                </button>
-              ))}
             </div>
           </div>
         </div>

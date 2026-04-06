@@ -13,7 +13,15 @@ export default defineSchema({
     ),
     balance: v.number(),
     updatedAt: v.number(),
+    investmentType: v.optional(v.string()), // e.g. brokerage, 401k, ira, crypto, other
   }),
+
+  financeFiles: defineTable({
+    name: v.string(),
+    storageId: v.id("_storage"),
+    addedAt: v.number(),
+    notes: v.optional(v.string()),
+  }).index("by_added", ["addedAt"]),
 
   transactions: defineTable({
     label: v.string(),

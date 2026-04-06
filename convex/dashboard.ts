@@ -21,6 +21,23 @@ export const getTransactions = query({
   },
 });
 
+export const getFinanceFiles = query({
+  args: {},
+  handler: async (ctx) => {
+    const files = await ctx.db
+      .query("financeFiles")
+      .withIndex("by_added")
+      .order("desc")
+      .collect();
+    return Promise.all(
+      files.map(async (f) => ({
+        ...f,
+        url: await ctx.storage.getUrl(f.storageId),
+      }))
+    );
+  },
+});
+
 export const getCourses = query({
   args: {},
   handler: async (ctx) => {
@@ -99,18 +116,20 @@ export const upsertAccountsFromDump = internalMutation({
           v.literal("other")
         ),
         balance: v.number(),
+        investmentType: v.optional(v.string()),
       })
     ),
   },
   handler: async (ctx, { accounts: toUpsert }) => {
     const now = Date.now();
     let updated = 0;
-    for (const { name, type, balance } of toUpsert) {
+    for (const { name, type, balance, investmentType } of toUpsert) {
       const existing = await ctx.db.query("accounts").filter((q) => q.eq(q.field("name"), name)).first();
+      const data = { type, balance, updatedAt: now, ...(investmentType != null && { investmentType }) };
       if (existing) {
-        await ctx.db.patch(existing._id, { type, balance, updatedAt: now });
+        await ctx.db.patch(existing._id, data);
       } else {
-        await ctx.db.insert("accounts", { name, type, balance, updatedAt: now });
+        await ctx.db.insert("accounts", { name, type, balance, updatedAt: now, ...(investmentType != null && { investmentType }) });
       }
       updated++;
     }
@@ -119,6 +138,40 @@ export const upsertAccountsFromDump = internalMutation({
 });
 
 // ─── Mutations ─────────────────────────────────────────────────────────────
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const saveFinanceFile = mutation({
+  args: {
+    name: v.string(),
+    storageId: v.id("_storage"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, { name, storageId, notes }) => {
+    await ctx.db.insert("financeFiles", {
+      name,
+      storageId,
+      addedAt: Date.now(),
+      notes,
+    });
+  },
+});
+
+export const deleteFinanceFile = mutation({
+  args: { id: v.id("financeFiles") },
+  handler: async (ctx, { id }) => {
+    const doc = await ctx.db.get(id);
+    if (doc) {
+      await ctx.storage.delete(doc.storageId);
+      await ctx.db.delete(id);
+    }
+  },
+});
 
 export const upsertAccount = mutation({
   args: {
@@ -132,12 +185,15 @@ export const upsertAccount = mutation({
       v.literal("other")
     ),
     balance: v.number(),
+    investmentType: v.optional(v.string()),
   },
-  handler: async (ctx, { id, name, type, balance }) => {
+  handler: async (ctx, { id, name, type, balance, investmentType }) => {
+    const now = Date.now();
+    const data = { name, type, balance, updatedAt: now, ...(investmentType != null && { investmentType }) };
     if (id) {
-      await ctx.db.patch(id, { name, type, balance, updatedAt: Date.now() });
+      await ctx.db.patch(id, data);
     } else {
-      await ctx.db.insert("accounts", { name, type, balance, updatedAt: Date.now() });
+      await ctx.db.insert("accounts", { name, type, balance, updatedAt: now, ...(investmentType != null && { investmentType }) });
     }
   },
 });
@@ -414,11 +470,15 @@ export const updateContentPost = mutation({
       v.literal("published")
     ),
     publishedDate: v.optional(v.number()),
+    title: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
-  handler: async (ctx, { id, status, publishedDate }) => {
+  handler: async (ctx, { id, status, publishedDate, title, notes }) => {
     await ctx.db.patch(id, {
       status,
       publishedDate: status === "published" ? (publishedDate ?? Date.now()) : undefined,
+      ...(title !== undefined && { title }),
+      ...(notes !== undefined && { notes }),
     });
   },
 });

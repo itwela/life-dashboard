@@ -58,6 +58,55 @@ export function FinancesBarChart({
   );
 }
 
+export function NetWorthBreakdownChart({
+  cash,
+  investments,
+  debt,
+  accent,
+}: {
+  cash: number;
+  investments: number;
+  debt: number;
+  accent: string;
+}) {
+  const data = [
+    { name: "Cash", value: Math.max(0, cash), fill: "#60a5fa" },
+    { name: "Investments", value: Math.max(0, investments), fill: "#f59e0b" },
+    { name: "Debt", value: Math.max(0, debt), fill: "#f87171" },
+  ].filter((d) => d.value > 0);
+  if (data.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-xs text-white/40">
+        Add accounts to see breakdown
+      </div>
+    );
+  }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} layout="vertical">
+        <XAxis type="number" hide />
+        <YAxis type="category" dataKey="name" width={56} tick={{ fill: theme.tick, fontSize: 9 }} axisLine={false} tickLine={false} />
+        <Tooltip
+          cursor={{ fill: theme.cursorFill, stroke: "rgba(96,200,255,0.2)" }}
+          wrapperStyle={{ outline: "none" }}
+          contentStyle={{
+            background: theme.tooltipBg,
+            border: `1px solid ${theme.tooltipBorder}`,
+            borderRadius: 8,
+            fontSize: 11,
+          }}
+          formatter={(value: number, name: string) => [
+            `${name === "Debt" ? "-" : ""}$${Number(value).toLocaleString()}`,
+            "",
+          ]}
+          labelStyle={{ color: "rgba(226,240,255,0.8)" }}
+        />
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function SchoolDonutChart({ percentComplete, accent }: { percentComplete: number; accent: string }) {
   const data = [
     { name: "Done", value: percentComplete, color: accent },

@@ -79,6 +79,12 @@ export default function BentoCard({
   const iconRef = useRef<HTMLSpanElement>(null);
   const shimmerRef = useRef<HTMLDivElement>(null);
   const idleTlRef = useRef<gsap.core.Timeline | null>(null);
+  const textTlRef = useRef<gsap.core.Timeline | null>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const line1Ref = useRef<HTMLParagraphElement>(null);
+  const line2Ref = useRef<HTMLParagraphElement>(null);
+  const knowMoreRef = useRef<HTMLParagraphElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const styles = CARD_STYLES[cardKey];
 
@@ -144,17 +150,34 @@ export default function BentoCard({
         if (iconEl) gsap.to(iconEl, { scale: 1.2, duration: 0.2, ease: "back.out(1.5)" });
         break;
       case "reading":
-        gsap.to(card, { y: -4, scale: 1.01, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
-        if (iconEl) gsap.to(iconEl, { rotation: 5, duration: 0.25, ease: "sine.out" });
+        gsap.to(card, { scale: 1.03, rotation: 0.5, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
+        if (iconEl) gsap.to(iconEl, { scale: 1.15, duration: 0.2, ease: "power2.out" });
         break;
       case "projects":
         gsap.to(card, { scale: 1.03, rotation: 0.5, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
         if (iconEl) gsap.to(iconEl, { scale: 1.15, duration: 0.2, ease: "power2.out" });
         break;
       case "content":
-        gsap.to(card, { scale: 1.02, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
-        if (iconEl) gsap.to(iconEl, { scale: 1.1, duration: 0.2, ease: "sine.out" });
+        gsap.to(card, { scale: 1.03, rotation: 0.5, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
+        if (iconEl) gsap.to(iconEl, { scale: 1.15, duration: 0.2, ease: "power2.out" });
         break;
+    }
+    // Reading / content: animate text in with GSAP (same DOM, no layout shift)
+    if (cardKey === "reading") {
+      textTlRef.current?.kill();
+      const els = [titleRef.current, subtitleRef.current, line1Ref.current, line2Ref.current, knowMoreRef.current].filter(Boolean) as HTMLElement[];
+      if (els.length) {
+        textTlRef.current = gsap.timeline();
+        textTlRef.current.fromTo(els, { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.24, stagger: 0.045, ease: "power2.out" });
+      }
+    }
+    if (cardKey === "content") {
+      textTlRef.current?.kill();
+      const els = [titleRef.current, subtitleRef.current, line1Ref.current, line2Ref.current, knowMoreRef.current].filter(Boolean) as HTMLElement[];
+      if (els.length) {
+        textTlRef.current = gsap.timeline();
+        textTlRef.current.fromTo(els, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.24, stagger: 0.045, ease: "power2.out" });
+      }
     }
   }, [cardKey, styles.shadowHover, styles.borderHover]);
 
@@ -175,7 +198,12 @@ export default function BentoCard({
       onComplete: () => { idleTlRef.current?.restart(); },
     });
     if (iconEl) gsap.to(iconEl, { y: 0, scale: 1, rotation: 0, duration: 0.25, ease: "power2.out" });
-  }, [styles.shadowRest]);
+    if (cardKey === "reading" || cardKey === "content") {
+      textTlRef.current?.kill();
+      const els = [titleRef.current, subtitleRef.current, line1Ref.current, line2Ref.current, knowMoreRef.current].filter(Boolean) as HTMLElement[];
+      if (els.length) gsap.set(els, { x: 0, y: 0, opacity: 1 });
+    }
+  }, [cardKey, styles.shadowRest]);
 
   useEffect(() => {
     setupIdle();
@@ -183,7 +211,10 @@ export default function BentoCard({
   }, [setupIdle]);
 
   const renderTitle = () => {
-    if (!isHovered) return <h2 className={textCls.title}>{title}</h2>;
+    // Reading and content: keep static text + ref for GSAP hover animation (no layout reflow)
+    if (!isHovered || cardKey === "reading" || cardKey === "content") {
+      return <h2 ref={titleRef} className={textCls.title}>{title}</h2>;
+    }
     const key = `title-${cardKey}-${isHovered}`;
     switch (cardKey) {
       case "finances":
@@ -204,29 +235,21 @@ export default function BentoCard({
             {title}
           </TextAnimate>
         );
-      case "reading":
-        return (
-          <TextAnimate key={key} as="h2" animation="slideLeft" by="character" className={textCls.title} startOnView={false} duration={0.2}>
-            {title}
-          </TextAnimate>
-        );
       case "projects":
         return (
           <HyperText key={key} as="h2" className={textCls.title} duration={400} animateOnHover={false} startOnView={false}>
             {title}
           </HyperText>
         );
-      case "content":
-        return (
-          <TextAnimate key={key} as="h2" animation="blurInDown" by="word" className={textCls.title} startOnView={false} duration={0.25}>
-            {title}
-          </TextAnimate>
-        );
+      default:
+        return <h2 className={textCls.title}>{title}</h2>;
     }
   };
 
   const renderSubtitle = () => {
-    if (!isHovered) return <p className={textCls.subtitle}>{subtitle}</p>;
+    if (!isHovered || cardKey === "reading" || cardKey === "content") {
+      return <p ref={subtitleRef} className={textCls.subtitle}>{subtitle}</p>;
+    }
     switch (cardKey) {
       case "school":
         return (
@@ -244,7 +267,9 @@ export default function BentoCard({
   };
 
   const renderLine1 = () => {
-    if (!isHovered) return <p className={textCls.line1} style={{ color: accent }}>{line1}</p>;
+    if (!isHovered || cardKey === "reading" || cardKey === "content") {
+      return <p ref={line1Ref} className={textCls.line1} style={{ color: accent }}>{line1}</p>;
+    }
     switch (cardKey) {
       case "finances":
         return (
@@ -264,30 +289,22 @@ export default function BentoCard({
             {line1}
           </TextAnimate>
         );
-      case "reading":
-        return (
-          <TypingAnimation className={textCls.line1} style={{ color: accent }} startOnView={false} showCursor={false} typeSpeed={40}>
-            {line1}
-          </TypingAnimation>
-        );
       case "projects":
         return (
           <TextAnimate as="p" animation="slideRight" by="word" className={textCls.line1} style={{ color: accent }} startOnView={false} duration={0.2}>
             {line1}
           </TextAnimate>
         );
-      case "content":
-        return (
-          <TypingAnimation className={textCls.line1} style={{ color: accent }} startOnView={false} showCursor={false} typeSpeed={35}>
-            {line1}
-          </TypingAnimation>
-        );
+      default:
+        return <p className={textCls.line1} style={{ color: accent }}>{line1}</p>;
     }
   };
 
   const renderLine2 = () => {
     if (line2 == null) return null;
-    if (!isHovered) return <p className={textCls.line2}>{line2}</p>;
+    if (!isHovered || cardKey === "reading" || cardKey === "content") {
+      return <p ref={line2Ref} className={textCls.line2}>{line2}</p>;
+    }
     return (
       <TextAnimate as="p" animation="fadeIn" by="word" className={textCls.line2} startOnView={false} duration={0.2}>
         {line2}
@@ -296,9 +313,9 @@ export default function BentoCard({
   };
 
   const renderKnowMore = () => {
-    if (!isHovered) {
+    if (!isHovered || cardKey === "reading" || cardKey === "content") {
       return (
-        <p className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`}>
+        <p ref={knowMoreRef} className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`}>
           Know more <span aria-hidden>→</span>
         </p>
       );
@@ -310,17 +327,18 @@ export default function BentoCard({
             Know more →
           </TextAnimate>
         );
-      case "reading":
-        return (
-          <TypingAnimation className={`mt-2 shrink-0 ${textCls.knowMore}`} startOnView={false} showCursor={false} typeSpeed={30}>
-            Know more →
-          </TypingAnimation>
-        );
-      default:
+      case "school":
+      case "projects":
         return (
           <TextAnimate as="p" animation="slideUp" by="word" className={`mt-2 shrink-0 ${textCls.knowMore}`} startOnView={false} duration={0.2}>
             Know more →
           </TextAnimate>
+        );
+      default:
+        return (
+          <p className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`}>
+            Know more <span aria-hidden>→</span>
+          </p>
         );
     }
   };
@@ -353,25 +371,29 @@ export default function BentoCard({
         />
       )}
       <div className="relative z-10 p-3 flex-1 flex flex-col min-h-0 justify-between">
-        <div className="flex items-start justify-between gap-2 shrink-0">
-          <div className="min-w-0 flex-1">
-            {renderTitle()}
-            {renderSubtitle()}
+        <div className="shrink-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {renderTitle()}
+              {renderSubtitle()}
+            </div>
+            <span ref={iconRef} className="text-lg shrink-0 opacity-90 inline-block" aria-hidden>
+              {icon}
+            </span>
           </div>
-          <span ref={iconRef} className="text-lg shrink-0 opacity-90 inline-block" aria-hidden>
-            {icon}
-          </span>
-        </div>
-        <div className="min-h-0 flex flex-col justify-center shrink-0">
-          {renderLine1()}
-          {renderLine2()}
+          <div className="flex flex-col shrink-0">
+            {renderLine1()}
+            {renderLine2()}
+          </div>
         </div>
         {chart != null && (
           <div className="min-h-0 flex-1 w-full mt-1" style={{ minHeight: 52 }}>
             {chart}
           </div>
         )}
-        {renderKnowMore()}
+        <div className="shrink-0 flex items-end">
+          {renderKnowMore()}
+        </div>
       </div>
     </div>
   );
