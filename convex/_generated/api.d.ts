@@ -9,6 +9,7 @@
  */
 
 import type * as aiAssistant from "../aiAssistant.js";
+import type * as checkIns from "../checkIns.js";
 import type * as dashboard from "../dashboard.js";
 import type * as financeDump from "../financeDump.js";
 
@@ -20,6 +21,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   aiAssistant: typeof aiAssistant;
+  checkIns: typeof checkIns;
   dashboard: typeof dashboard;
   financeDump: typeof financeDump;
 }>;

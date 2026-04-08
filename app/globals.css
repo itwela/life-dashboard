@@ -1,22 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --font-geist: "Geist", sans-serif;
-  /* Frutiger Aero dark palette */
-  --aero-bg: #020b18;
-  --aero-bg-mid: #041223;
-  --aero-bg-light: #061a2e;
-  --aero-accent: #60c8ff;
-  --aero-accent-dim: rgba(96, 200, 255, 0.35);
-  --aero-glass: rgba(255, 255, 255, 0.06);
-  --aero-border: rgba(255, 255, 255, 0.08);
-  --aero-text: #e2f0ff;
-  --aero-text-muted: rgba(226, 240, 255, 0.5);
+  --font-cormorant: "Cormorant Garamond", serif;
+  --font-dm-sans: "DM Sans", sans-serif;
+
+  /* Botanica palette */
+  --bot-bg:          #060c05;
+  --bot-bg-mid:      #08110a;
+  --bot-bg-card:     #0e1c0c;
+  --bot-forest:      #071008;
+  --bot-amber:       #c4912a;
+  --bot-amber-dim:   rgba(196, 145, 42, 0.3);
+  --bot-sage:        #7ab05a;
+  --bot-sage-dim:    rgba(122, 176, 90, 0.2);
+  --bot-moss:        #4a6b3a;
+  --bot-cream:       #e8e0cc;
+  --bot-cream-muted: rgba(232, 224, 204, 0.45);
+  --bot-cream-faint: rgba(232, 224, 204, 0.2);
+  --bot-border:      rgba(122, 176, 90, 0.1);
+  --bot-border-warm: rgba(196, 145, 42, 0.18);
+  --bot-glass:       rgba(20, 35, 15, 0.7);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
   height: 100%;
@@ -24,32 +30,44 @@ html, body {
 }
 
 body {
-  font-family: var(--font-geist), system-ui, sans-serif;
-  background: var(--aero-bg);
-  color: var(--aero-text);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  background: var(--bot-bg);
+  color: var(--bot-cream);
   min-height: 100vh;
 }
 
-/* Frutiger Aero scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(96, 200, 255, 0.25);
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(96, 200, 255, 0.45);
+/* Grain overlay — animated film noise */
+body::after {
+  content: '';
+  position: fixed;
+  inset: -100px;
+  opacity: 0.038;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  pointer-events: none;
+  z-index: 9999;
+  animation: grain-shift 0.6s steps(1) infinite;
 }
 
+@keyframes grain-shift {
+  0%   { transform: translate(0px, 0px); }
+  16%  { transform: translate(-3px, 2px); }
+  33%  { transform: translate(2px, -3px); }
+  50%  { transform: translate(-1px, 3px); }
+  66%  { transform: translate(3px, -1px); }
+  83%  { transform: translate(-2px, -2px); }
+  100% { transform: translate(1px, 2px); }
+}
+
+/* Scrollbar — amber toned */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(20, 35, 15, 0.4); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: rgba(196, 145, 42, 0.22); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(196, 145, 42, 0.42); }
+
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
 }
 
 @keyframes float {
@@ -67,18 +85,17 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Recharts: tooltip and hover cursor match Frutiger Aero (no white) */
+/* Recharts tooltips — botanica */
 .recharts-tooltip-wrapper,
 .recharts-default-tooltip {
-  background: rgba(2, 11, 24, 0.96) !important;
-  border: 1px solid rgba(96, 200, 255, 0.25) !important;
+  background: rgba(10, 16, 8, 0.97) !important;
+  border: 1px solid rgba(122, 176, 90, 0.25) !important;
   border-radius: 8px;
   padding: 6px 10px;
-  color: var(--aero-text);
+  color: var(--bot-cream);
 }
 .recharts-tooltip-cursor,
 .recharts-rectangle.recharts-tooltip-cursor {
-  fill: rgba(6, 26, 46, 0.9) !important;
-  stroke: rgba(96, 200, 255, 0.2);
+  fill: rgba(15, 24, 12, 0.9) !important;
+  stroke: rgba(122, 176, 90, 0.15);
 }
-

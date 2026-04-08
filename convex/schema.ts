@@ -113,4 +113,13 @@ export default defineSchema({
     revenue: v.number(),
     notes: v.optional(v.string()),
   }),
+
+  checkIns: defineTable({
+    date: v.string(), // "YYYY-MM-DD"
+    timeOfDay: v.union(v.literal("morning"), v.literal("afternoon"), v.literal("night")),
+    emotions: v.array(v.string()), // ordered 1–3, index 0 = loudest
+    journal: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+  }).index("by_date", ["date"]),
 });

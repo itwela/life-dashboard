@@ -13,34 +13,34 @@ const CARD_STYLES: Record<
   { shadowRest: string; shadowHover: string; borderHover: string }
 > = {
   finances: {
-    shadowRest: "0 0 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
-    shadowHover: "0 0 40px rgba(74,222,128,0.3), 0 8px 32px rgba(0,0,0,0.3)",
-    borderHover: "rgba(74,222,128,0.45)",
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(196,145,42,0.06)",
+    shadowHover: "0 0 40px rgba(196,145,42,0.22), 0 8px 32px rgba(0,0,0,0.5)",
+    borderHover: "rgba(196,145,42,0.45)",
   },
   school: {
-    shadowRest: "0 0 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
-    shadowHover: "0 12px 40px rgba(96,165,250,0.25), 0 0 30px rgba(96,165,250,0.2)",
-    borderHover: "rgba(96,165,250,0.5)",
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(122,176,90,0.06)",
+    shadowHover: "0 12px 40px rgba(122,176,90,0.18), 0 0 30px rgba(122,176,90,0.12)",
+    borderHover: "rgba(122,176,90,0.45)",
   },
   fitness: {
-    shadowRest: "0 0 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
-    shadowHover: "0 0 45px rgba(251,146,60,0.35), 0 10px 35px rgba(0,0,0,0.25)",
-    borderHover: "rgba(251,146,60,0.55)",
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(232,115,74,0.06)",
+    shadowHover: "0 0 45px rgba(232,115,74,0.28), 0 10px 35px rgba(0,0,0,0.45)",
+    borderHover: "rgba(232,115,74,0.5)",
   },
   reading: {
-    shadowRest: "0 0 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
-    shadowHover: "0 10px 38px rgba(192,132,252,0.25), 0 0 25px rgba(192,132,252,0.15)",
-    borderHover: "rgba(192,132,252,0.45)",
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(160,133,196,0.06)",
+    shadowHover: "0 10px 38px rgba(160,133,196,0.18), 0 0 25px rgba(160,133,196,0.1)",
+    borderHover: "rgba(160,133,196,0.45)",
   },
   projects: {
-    shadowRest: "0 0 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
-    shadowHover: "0 0 42px rgba(251,191,36,0.32), 0 8px 30px rgba(0,0,0,0.28)",
-    borderHover: "rgba(251,191,36,0.55)",
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,168,58,0.06)",
+    shadowHover: "0 0 42px rgba(212,168,58,0.25), 0 8px 30px rgba(0,0,0,0.45)",
+    borderHover: "rgba(212,168,58,0.5)",
   },
   content: {
-    shadowRest: "0 0 30px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)",
-    shadowHover: "0 0 50px rgba(34,211,238,0.28), inset 0 0 30px rgba(34,211,238,0.04)",
-    borderHover: "rgba(34,211,238,0.5)",
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(90,158,138,0.06)",
+    shadowHover: "0 0 50px rgba(90,158,138,0.22), inset 0 0 30px rgba(90,158,138,0.04)",
+    borderHover: "rgba(90,158,138,0.45)",
   },
 };
 
@@ -57,11 +57,11 @@ interface BentoCardProps {
 }
 
 const textCls = {
-  title: "text-sm font-bold text-white truncate",
-  subtitle: "text-[11px] text-white/45 truncate",
-  line1: "text-base font-bold truncate",
-  line2: "text-[11px] text-white/50 truncate",
-  knowMore: "text-[11px] font-medium text-[#60c8ff]",
+  title: "text-sm font-medium truncate",
+  subtitle: "text-[11px] truncate",
+  line1: "text-base font-semibold truncate",
+  line2: "text-[11px] truncate",
+  knowMore: "text-[11px] font-medium",
 };
 
 export default function BentoCard({
@@ -192,7 +192,7 @@ export default function BentoCard({
       y: 0,
       rotation: 0,
       boxShadow: styles.shadowRest,
-      borderColor: "rgba(255,255,255,0.08)",
+      borderColor: "rgba(122,176,90,0.1)",
       duration: 0.35,
       ease: "power2.out",
       onComplete: () => { idleTlRef.current?.restart(); },
@@ -211,44 +211,46 @@ export default function BentoCard({
   }, [setupIdle]);
 
   const renderTitle = () => {
+    const titleStyle = { color: "rgba(232,224,204,0.92)", fontFamily: "var(--font-cormorant)", fontSize: "15px", fontWeight: 500, fontStyle: "italic" as const };
     // Reading and content: keep static text + ref for GSAP hover animation (no layout reflow)
     if (!isHovered || cardKey === "reading" || cardKey === "content") {
-      return <h2 ref={titleRef} className={textCls.title}>{title}</h2>;
+      return <h2 ref={titleRef} className={textCls.title} style={titleStyle}>{title}</h2>;
     }
     const key = `title-${cardKey}-${isHovered}`;
     switch (cardKey) {
       case "finances":
         return (
-          <HyperText key={key} as="h2" className={textCls.title} duration={500} animateOnHover={false} startOnView={false}>
+          <HyperText key={key} as="h2" className={textCls.title} style={titleStyle} duration={500} animateOnHover={false} startOnView={false}>
             {title}
           </HyperText>
         );
       case "school":
         return (
-          <TextAnimate key={key} as="h2" animation="blurInUp" by="character" className={textCls.title} startOnView={false} duration={0.25}>
+          <TextAnimate key={key} as="h2" animation="blurInUp" by="character" className={textCls.title} style={titleStyle} startOnView={false} duration={0.25}>
             {title}
           </TextAnimate>
         );
       case "fitness":
         return (
-          <TextAnimate key={key} as="h2" animation="scaleUp" by="word" className={textCls.title} startOnView={false} duration={0.2}>
+          <TextAnimate key={key} as="h2" animation="scaleUp" by="word" className={textCls.title} style={titleStyle} startOnView={false} duration={0.2}>
             {title}
           </TextAnimate>
         );
       case "projects":
         return (
-          <HyperText key={key} as="h2" className={textCls.title} duration={400} animateOnHover={false} startOnView={false}>
+          <HyperText key={key} as="h2" className={textCls.title} style={titleStyle} duration={400} animateOnHover={false} startOnView={false}>
             {title}
           </HyperText>
         );
       default:
-        return <h2 className={textCls.title}>{title}</h2>;
+        return <h2 className={textCls.title} style={titleStyle}>{title}</h2>;
     }
   };
 
   const renderSubtitle = () => {
+    const subStyle = { color: "rgba(232,224,204,0.72)", fontSize: "11px", letterSpacing: "0.04em" };
     if (!isHovered || cardKey === "reading" || cardKey === "content") {
-      return <p ref={subtitleRef} className={textCls.subtitle}>{subtitle}</p>;
+      return <p ref={subtitleRef} className={textCls.subtitle} style={{ ...subStyle, color: "rgba(232,224,204,0.78)" }}>{subtitle}</p>;
     }
     switch (cardKey) {
       case "school":
@@ -301,9 +303,10 @@ export default function BentoCard({
   };
 
   const renderLine2 = () => {
+    const line2Style = { color: "rgba(232,224,204,0.78)", fontSize: "11px" };
     if (line2 == null) return null;
     if (!isHovered || cardKey === "reading" || cardKey === "content") {
-      return <p ref={line2Ref} className={textCls.line2}>{line2}</p>;
+      return <p ref={line2Ref} className={textCls.line2} style={line2Style}>{line2}</p>;
     }
     return (
       <TextAnimate as="p" animation="fadeIn" by="word" className={textCls.line2} startOnView={false} duration={0.2}>
@@ -315,29 +318,29 @@ export default function BentoCard({
   const renderKnowMore = () => {
     if (!isHovered || cardKey === "reading" || cardKey === "content") {
       return (
-        <p ref={knowMoreRef} className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`}>
-          Know more <span aria-hidden>→</span>
+        <p ref={knowMoreRef} className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`} style={{ color: "rgba(196,145,42,0.82)", fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic" }}>
+          Explore <span aria-hidden>→</span>
         </p>
       );
     }
     switch (cardKey) {
       case "finances":
         return (
-          <TextAnimate as="p" animation="slideRight" by="word" className={`mt-2 shrink-0 ${textCls.knowMore}`} startOnView={false} duration={0.2}>
-            Know more →
+          <TextAnimate as="p" animation="slideRight" by="word" className={`mt-2 shrink-0 ${textCls.knowMore}`} style={{ color: "rgba(196,145,42,0.8)", fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic" }} startOnView={false} duration={0.2}>
+            Explore →
           </TextAnimate>
         );
       case "school":
       case "projects":
         return (
-          <TextAnimate as="p" animation="slideUp" by="word" className={`mt-2 shrink-0 ${textCls.knowMore}`} startOnView={false} duration={0.2}>
-            Know more →
+          <TextAnimate as="p" animation="slideUp" by="word" className={`mt-2 shrink-0 ${textCls.knowMore}`} style={{ color: "rgba(196,145,42,0.8)", fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic" }} startOnView={false} duration={0.2}>
+            Explore →
           </TextAnimate>
         );
       default:
         return (
-          <p className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`}>
-            Know more <span aria-hidden>→</span>
+          <p className={`mt-2 shrink-0 flex items-center gap-1 ${textCls.knowMore}`} style={{ color: "rgba(196,145,42,0.65)", fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic" }}>
+            Explore <span aria-hidden>→</span>
           </p>
         );
     }
@@ -354,11 +357,24 @@ export default function BentoCard({
       onMouseLeave={handleMouseLeave}
       className="rounded-xl flex flex-col overflow-hidden min-h-0 cursor-pointer relative"
       style={{
-        background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "linear-gradient(135deg, rgba(14,22,10,0.94) 0%, rgba(8,14,6,0.98) 100%)",
+        border: "1px solid rgba(122,176,90,0.1)",
         boxShadow: styles.shadowRest,
       }}
     >
+      {/* Botanical leaf watermark */}
+      <div className="absolute pointer-events-none z-0" style={{ top: 8, right: 8, width: 38, height: 46, opacity: 0.055, color: accent }}>
+        <svg viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
+          <path d="M19 44 C19 36 19 24 19 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          <path d="M19 36 C19 30 13 24 7 22" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+          <path d="M19 36 C19 30 25 24 31 22" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+          <path d="M19 26 C19 20 14 15 9 13" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
+          <path d="M19 26 C19 20 24 15 29 13" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
+          <path d="M19 16 C19 11 15 7 11 5" stroke="currentColor" strokeWidth="0.7" strokeLinecap="round"/>
+          <path d="M19 16 C19 11 23 7 27 5" stroke="currentColor" strokeWidth="0.7" strokeLinecap="round"/>
+        </svg>
+      </div>
+
       {cardKey === "reading" && (
         <div
           ref={shimmerRef}
