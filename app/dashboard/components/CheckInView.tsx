@@ -21,6 +21,53 @@ const EMOTIONS: { label: string; color: string }[] = [
 
 const EMOTION_MAP = Object.fromEntries(EMOTIONS.map((e) => [e.label, e.color]));
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace("#", "").trim();
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(full, 16);
+  if (Number.isNaN(n)) return { r: 122, g: 176, b: 90 };
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgb(hex: string, a: number) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/** Ordered emotions[0] = most present … [2] = least — gradient opacity follows that */
+function emotionCalendarGradient(emotions: string[], selected: boolean): string {
+  const cols = emotions.slice(0, 3).map((e) => EMOTION_MAP[e] ?? "#7ab05a");
+  if (cols.length === 0) return "rgba(232,224,204,0.01)";
+  const hi = selected ? 0.4 : 0.3;
+  const mid = selected ? 0.3 : 0.22;
+  const lo = selected ? 0.2 : 0.14;
+  if (cols.length === 1) {
+    const c = cols[0];
+    return `linear-gradient(150deg, ${rgb(c, hi)} 0%, ${rgb(c, hi * 0.65)} 48%, ${rgb(c, hi * 0.4)} 100%)`;
+  }
+  if (cols.length === 2) {
+    const [c0, c1] = cols;
+    return `linear-gradient(150deg, ${rgb(c0, hi)} 0%, ${rgb(c1, mid)} 52%, ${rgb(c1, lo * 0.9)} 100%)`;
+  }
+  const [c0, c1, c2] = cols;
+  return `linear-gradient(150deg, ${rgb(c0, hi)} 0%, ${rgb(c1, mid)} 42%, ${rgb(c2, lo)} 100%)`;
+}
+
+function emotionFeedBackground(emotions: string[]): string {
+  const cols = emotions.slice(0, 3).map((e) => EMOTION_MAP[e] ?? "#7ab05a");
+  if (cols.length === 0) return "rgba(232,224,204,0.01)";
+  if (cols.length === 1) {
+    const c = cols[0];
+    return `linear-gradient(165deg, ${rgb(c, 0.22)} 0%, ${rgb(c, 0.08)} 55%, rgba(6,10,5,0.99) 100%)`;
+  }
+  if (cols.length === 2) {
+    const [c0, c1] = cols;
+    return `linear-gradient(165deg, ${rgb(c0, 0.2)} 0%, ${rgb(c1, 0.14)} 45%, rgba(6,10,5,0.99) 100%)`;
+  }
+  const [c0, c1, c2] = cols;
+  return `linear-gradient(165deg, ${rgb(c0, 0.2)} 0%, ${rgb(c1, 0.14)} 40%, ${rgb(c2, 0.1)} 72%, rgba(6,10,5,0.99) 100%)`;
+}
+
 function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -42,6 +89,7 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [savedDate, setSavedDate] = useState<string | null>(null);
   const [isPolishing, setIsPolishing] = useState(false);
+  const [copiedDate, setCopiedDate] = useState<string | null>(null);
 
   const allCheckIns = useQuery(api.checkIns.list) ?? [];
   const addCheckIn = useMutation(api.checkIns.add);
@@ -203,6 +251,29 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
     finally { setIsPolishing(false); }
   }
 
+  function buildClaudeText(ds: string, entry: typeof allCheckIns[0]) {
+    const [year, mo, day] = ds.split("-").map(Number);
+    const dateLabel = new Date(year, mo - 1, day).toLocaleDateString("en-US", {
+      weekday: "long", month: "long", day: "numeric",
+    });
+    const lines = [
+      `Hey — I just did my check-in and wanted to talk about it.`,
+      ``,
+      `${dateLabel} · ${entry.timeOfDay}`,
+      `Feeling: ${entry.emotions.join(", ")}`,
+    ];
+    if (entry.journal) lines.push(``, entry.journal);
+    if (entry.tags?.length) lines.push(``, entry.tags.map((t) => `#${t}`).join("  "));
+    return lines.join("\n");
+  }
+
+  async function handleCopyForClaude(e: React.MouseEvent, ds: string, entry: typeof allCheckIns[0]) {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(buildClaudeText(ds, entry));
+    setCopiedDate(ds);
+    setTimeout(() => setCopiedDate(null), 2000);
+  }
+
   async function handleSave(ds: string) {
     if (selectedEmotions.length === 0) return;
     await addCheckIn({
@@ -281,9 +352,9 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Days grid */}
-          <div className="grid grid-cols-7" style={{ gap: 3 }}>
+          <div className="grid grid-cols-7" style={{ gap: 2 }}>
             {calDays.map((day, i) => {
-              if (!day) return <div key={i} />;
+              if (!day) return <div key={i} style={{ height: 120 }} aria-hidden />;
               const ds = `${calMonth.year}-${String(calMonth.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const entry = checkInByDate[ds];
               const primaryColor = entry ? (EMOTION_MAP[entry.emotions[0]] ?? "#7ab05a") : null;
@@ -296,23 +367,38 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
                   onClick={() => selectCalDay(day)}
                   className="relative flex flex-col items-center justify-center rounded-md transition-all"
                   style={{
-                    aspectRatio: "1",
+                    height: 120,
                     background: isSelected
-                      ? primaryColor ? `${primaryColor}18` : "rgba(196,145,42,0.12)"
-                      : isToday
-                      ? "rgba(232,224,204,0.04)"
-                      : "rgba(232,224,204,0.01)",
+                      ? entry
+                        ? emotionCalendarGradient(entry.emotions, true)
+                        : primaryColor
+                          ? `${primaryColor}18`
+                          : "rgba(196,145,42,0.12)"
+                      : entry
+                        ? emotionCalendarGradient(entry.emotions, false)
+                        : isToday
+                          ? "rgba(232,224,204,0.04)"
+                          : "rgba(232,224,204,0.01)",
                     border: isSelected
-                      ? `1px solid ${primaryColor ? primaryColor + "45" : "rgba(196,145,42,0.35)"}`
-                      : isToday
-                      ? "1px solid rgba(196,145,42,0.2)"
-                      : "1px solid rgba(122,176,90,0.06)",
-                    boxShadow: isSelected && primaryColor ? `0 0 8px ${primaryColor}15` : "none",
+                      ? entry
+                        ? `1px solid ${rgb(EMOTION_MAP[entry.emotions[0]] ?? "#7ab05a", 0.45)}`
+                        : `1px solid ${primaryColor ? primaryColor + "45" : "rgba(196,145,42,0.35)"}`
+                      : entry
+                        ? `1px solid ${rgb(EMOTION_MAP[entry.emotions[0]] ?? "#7ab05a", 0.32)}`
+                        : isToday
+                          ? "1px solid rgba(196,145,42,0.2)"
+                          : "1px solid rgba(122,176,90,0.06)",
+                    boxShadow:
+                      isSelected && entry
+                        ? `0 0 14px ${rgb(EMOTION_MAP[entry.emotions[0]] ?? "#7ab05a", 0.2)}`
+                        : isSelected && primaryColor && !entry
+                          ? `0 0 8px ${primaryColor}15`
+                          : "none",
                   }}
                 >
                   <span style={{
                     fontFamily: "var(--font-cormorant)",
-                    fontSize: "18px",
+                    fontSize: "20px",
                     lineHeight: 1,
                     fontWeight: isToday ? 600 : 400,
                     color: isSelected
@@ -368,9 +454,7 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
                   scrollSnapAlign: "start",
                   height: "100%",
                   minHeight: "100%",
-                  background: primaryColor
-                    ? `linear-gradient(160deg, ${primaryColor}0d, rgba(6,10,5,0.99))`
-                    : "rgba(232,224,204,0.01)",
+                  background: entry ? emotionFeedBackground(entry.emotions) : "rgba(232,224,204,0.01)",
                   borderLeft: isSelected
                     ? `2px solid ${primaryColor ? primaryColor + "50" : "rgba(196,145,42,0.3)"}`
                     : "2px solid rgba(122,176,90,0.06)",
@@ -442,6 +526,23 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
                         ))}
                       </div>
                     )}
+                    <button
+                      onClick={(e) => handleCopyForClaude(e, ds, entry)}
+                      className="w-full py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 mt-1"
+                      style={{
+                        fontSize: "11px",
+                        fontFamily: "var(--font-dm-sans)",
+                        letterSpacing: "0.04em",
+                        background: copiedDate === ds ? "rgba(122,176,90,0.08)" : "rgba(196,145,42,0.05)",
+                        border: copiedDate === ds ? "1px solid rgba(122,176,90,0.22)" : "1px solid rgba(196,145,42,0.1)",
+                        color: copiedDate === ds ? "rgba(122,176,90,0.75)" : "rgba(196,145,42,0.45)",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={(e) => { if (copiedDate !== ds) e.currentTarget.style.color = "rgba(196,145,42,0.75)"; e.currentTarget.style.borderColor = copiedDate === ds ? "rgba(122,176,90,0.22)" : "rgba(196,145,42,0.22)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = copiedDate === ds ? "rgba(122,176,90,0.75)" : "rgba(196,145,42,0.45)"; e.currentTarget.style.borderColor = copiedDate === ds ? "rgba(122,176,90,0.22)" : "rgba(196,145,42,0.1)"; }}
+                    >
+                      {copiedDate === ds ? "✓ copied" : "copy for claude"}
+                    </button>
                   </div>
                 )}
 

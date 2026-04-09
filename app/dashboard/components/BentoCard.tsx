@@ -363,7 +363,7 @@ export default function BentoCard({
       }}
     >
       {/* Botanical leaf watermark */}
-      <div className="absolute pointer-events-none z-0" style={{ top: 8, right: 8, width: 38, height: 46, opacity: 0.055, color: accent }}>
+      <div className="absolute pointer-events-none z-0" style={{ top: "8px", right: "8px", width: "38px", height: "46px", opacity: 0.055, color: accent }}>
         <svg viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
           <path d="M19 44 C19 36 19 24 19 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
           <path d="M19 36 C19 30 13 24 7 22" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
@@ -403,7 +403,7 @@ export default function BentoCard({
           </div>
         </div>
         {chart != null && (
-          <div className="min-h-0 flex-1 w-full mt-1" style={{ minHeight: 52 }}>
+          <div className="min-h-0 flex-1 w-full mt-1" style={{ minHeight: "52px" }}>
             {chart}
           </div>
         )}

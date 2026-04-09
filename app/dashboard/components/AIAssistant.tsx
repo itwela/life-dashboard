@@ -39,11 +39,11 @@ export default function AIAssistant() {
     <div
       className="fixed z-[100] flex flex-col overflow-hidden shadow-2xl"
       style={{
-        right: 16,
-        bottom: expanded ? 16 : 0,
-        width: expanded ? WINDOW_WIDTH : 180,
-        height: expanded ? WINDOW_HEIGHT : 40,
-        borderRadius: expanded ? 14 : "10px 10px 0 0",
+        right: "16px",
+        bottom: expanded ? "16px" : "0px",
+        width: expanded ? `${WINDOW_WIDTH}px` : "180px",
+        height: expanded ? `${WINDOW_HEIGHT}px` : "40px",
+        borderRadius: expanded ? "14px" : "10px 10px 0 0",
         background: "linear-gradient(180deg, rgba(8,18,7,0.98) 0%, rgba(5,12,4,0.99) 100%)",
         border: "1px solid rgba(122,176,90,0.18)",
         boxShadow: "0 0 40px rgba(0,0,0,0.6), 0 0 60px rgba(122,176,90,0.06), inset 0 1px 0 rgba(196,145,42,0.08)",
@@ -56,7 +56,7 @@ export default function AIAssistant() {
         onClick={() => setExpanded(!expanded)}
         className="shrink-0 flex items-center gap-2 px-3 w-full text-left transition-colors"
         style={{
-          height: 40,
+          height: "40px",
           borderBottom: expanded ? "1px solid rgba(122,176,90,0.08)" : "none",
           background: expanded ? "rgba(5,12,4,0.6)" : "transparent",
         }}
@@ -69,10 +69,10 @@ export default function AIAssistant() {
         >
           ✦
         </span>
-        <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "14px", fontStyle: "italic", fontWeight: 500, color: "rgba(232,224,204,0.78)", flex: 1 }}>
+        <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "14px", fontStyle: "italic", fontWeight: 500, color: "rgba(232,224,204,0.78)", flex: "1 1 0%" }}>
           Garden Log
         </span>
-        <span style={{ color: "rgba(232,224,204,0.3)", fontSize: "14px", lineHeight: 1 }}>
+        <span style={{ color: "rgba(232,224,204,0.3)", fontSize: "14px", lineHeight: "1" }}>
           {expanded ? "−" : "+"}
         </span>
       </button>

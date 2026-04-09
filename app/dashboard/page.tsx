@@ -262,7 +262,7 @@ export default function DashboardPage() {
         {/* ── LEFT: Botanical panel ── */}
         <div
           className="shrink-0 flex flex-col relative overflow-hidden"
-          style={{ width: 288, borderRight: "1px solid rgba(122,176,90,0.08)", background: "linear-gradient(180deg, #050c04 0%, #061008 55%, #081308 100%)" }}
+          style={{ width: "288px", borderRight: "1px solid rgba(122,176,90,0.08)", background: "linear-gradient(180deg, #050c04 0%, #061008 55%, #081308 100%)" }}
         >
           {/* Soft green ambiance */}
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 55% 35%, rgba(74,122,90,0.07) 0%, transparent 62%)" }}/>
@@ -274,21 +274,21 @@ export default function DashboardPage() {
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: "rgba(122,176,90,0.06)", margin: "0 22px" }}/>
+          <div style={{ height: "1px", background: "rgba(122,176,90,0.06)", margin: "0 22px" }}/>
 
           {/* Date */}
           <div className="shrink-0 px-6 pt-5 pb-2">
             <p style={{ fontFamily: "var(--font-cormorant)", fontSize: "62px", lineHeight: 1, fontStyle: "italic", fontWeight: 400, color: "rgba(232,224,204,0.82)", letterSpacing: "-0.02em" }}>
               {dateNum}
             </p>
-            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "9px", letterSpacing: "0.12em", color: "rgba(232,224,204,0.72)", textTransform: "uppercase", marginTop: 3 }}>
+            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "9px", letterSpacing: "0.12em", color: "rgba(232,224,204,0.72)", textTransform: "uppercase", marginTop: "3px" }}>
               {dateLabel}
             </p>
           </div>
 
           {/* Quote */}
           <div className="shrink-0 px-6 pb-4">
-            <p style={{ fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic", color: "rgba(232,224,204,0.78)", lineHeight: 1.7, borderLeft: "2px solid rgba(196,145,42,0.25)", paddingLeft: 12 }}>
+            <p style={{ fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic", color: "rgba(232,224,204,0.78)", lineHeight: 1.7, borderLeft: "2px solid rgba(196,145,42,0.25)", paddingLeft: "12px" }}>
               &ldquo;Put simply, training is training—it&apos;s what a proper swordsman must do. These things I do are what a proper wealthy person does.&rdquo;
             </p>
           </div>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Fern decoration — absolute bottom-right corner */}
-          <div className="absolute bottom-0 right-0 pointer-events-none" style={{ width: 132, height: 232, opacity: 0.13 }}>
+          <div className="absolute bottom-0 right-0 pointer-events-none" style={{ width: "132px", height: "232px", opacity: 0.13 }}>
             <FernFrond />
           </div>
         </div>
@@ -321,7 +321,7 @@ export default function DashboardPage() {
 
           <div
             className="h-full w-full p-3 relative z-10"
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10 }}
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "10px" }}
           >
             {CARD_CONFIG.map((card) => {
               const chart =

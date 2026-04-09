@@ -143,7 +143,7 @@ export function SchoolDonutChart({ percentComplete, accent }: { percentComplete:
       </ResponsiveContainer>
       <div
         className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        style={{ color: accent, fontSize: 14, fontWeight: 700 }}
+        style={{ color: accent, fontSize: "14px", fontWeight: "700" }}
       >
         {percentComplete}%
       </div>
@@ -158,6 +158,7 @@ export function FitnessBarChart({
   data: { day: string; count: number }[];
   accent: string;
 }) {
+  const emptyFill = `${accent}22`;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -174,7 +175,11 @@ export function FitnessBarChart({
           }}
           formatter={(value: number) => [value, "workouts"]}
         />
-        <Bar dataKey="count" fill={accent} radius={[4, 4, 0, 0]} maxBarSize={20} />
+        <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={20}>
+          {data.map((d, i) => (
+            <Cell key={`cell-${i}`} fill={d.count > 0 ? accent : emptyFill} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
