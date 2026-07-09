@@ -122,4 +122,15 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     createdAt: v.number(),
   }).index("by_date", ["date"]),
+
+  // Read-only mirror of JobKompass job leads, synced via the /jobLeads/sync HTTP endpoint.
+  jobLeads: defineTable({
+    sourceLeadId: v.string(), // the jobLeads _id from jobkompass-v3, used as the upsert key
+    company: v.string(),
+    role: v.string(),
+    sourceType: v.union(v.literal("personal_outreach"), v.literal("digest_listing")),
+    status: v.string(),
+    isFollowUp: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  }).index("by_source_lead", ["sourceLeadId"]),
 });
