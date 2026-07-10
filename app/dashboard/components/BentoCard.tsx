@@ -6,7 +6,7 @@ import { HyperText } from "@/components/ui/hyper-text";
 import { TextAnimate } from "@/components/ui/text-animate";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 
-export type BentoCardKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content";
+export type BentoCardKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "leads";
 
 const CARD_STYLES: Record<
   BentoCardKey,
@@ -41,6 +41,11 @@ const CARD_STYLES: Record<
     shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(90,158,138,0.06)",
     shadowHover: "0 0 50px rgba(90,158,138,0.22), inset 0 0 30px rgba(90,158,138,0.04)",
     borderHover: "rgba(90,158,138,0.45)",
+  },
+  leads: {
+    shadowRest: "0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(74,144,196,0.06)",
+    shadowHover: "0 10px 36px rgba(74,144,196,0.2), 0 0 26px rgba(74,144,196,0.12)",
+    borderHover: "rgba(74,144,196,0.45)",
   },
 };
 
@@ -120,6 +125,9 @@ export default function BentoCard({
       case "content":
         tl.to(card, { scale: 1.004, duration: 2.5, ease: "sine.inOut" }).to(card, { scale: 1, duration: 2.5, ease: "sine.inOut" });
         break;
+      case "leads":
+        tl.to(card, { scale: 1.005, duration: 2.2, ease: "sine.inOut" }).to(card, { scale: 1, duration: 2.2, ease: "sine.inOut" });
+        break;
     }
 
     idleTlRef.current = tl;
@@ -160,6 +168,10 @@ export default function BentoCard({
       case "content":
         gsap.to(card, { scale: 1.03, rotation: 0.5, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
         if (iconEl) gsap.to(iconEl, { scale: 1.15, duration: 0.2, ease: "power2.out" });
+        break;
+      case "leads":
+        gsap.to(card, { scale: 1.03, boxShadow: styles.shadowHover, borderColor: styles.borderHover, duration, ease });
+        if (iconEl) gsap.to(iconEl, { scale: 1.08, duration: 0.2, ease });
         break;
     }
     // Reading / content: animate text in with GSAP (same DOM, no layout shift)

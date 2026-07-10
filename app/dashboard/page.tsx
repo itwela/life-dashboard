@@ -12,6 +12,7 @@ import ProjectsSection from "./components/ProjectsSection";
 import BentoCard from "./components/BentoCard";
 import AIAssistant from "./components/AIAssistant";
 import CheckInView from "./components/CheckInView";
+import { JobLeadsFeed } from "@/components/JobLeadsFeed";
 import {
   SchoolDonutChart,
   FitnessBarChart,
@@ -22,7 +23,7 @@ import {
 
 const WGU_DEFAULTS = { totalCU: 119, earnedCU: 43, activeCount: 13, termsCompleted: 5, termsTotal: 11 };
 
-type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content";
+type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "leads";
 
 const CARD_CONFIG: { key: TabKey; title: string; subtitle: string; accent: string; icon: string }[] = [
   { key: "finances", title: "Finances",  subtitle: "Net worth & cash flow",  accent: "#c4912a", icon: "🌾" },
@@ -31,6 +32,7 @@ const CARD_CONFIG: { key: TabKey; title: string; subtitle: string; accent: strin
   { key: "reading",  title: "Reading",   subtitle: "Books & queue",           accent: "#a085c4", icon: "🍃" },
   { key: "projects", title: "Projects",  subtitle: "Active & shipped",        accent: "#d4a83a", icon: "🌻" },
   { key: "content",  title: "Content",   subtitle: "Ideas & published",       accent: "#5a9e8a", icon: "🌺" },
+  { key: "leads",    title: "Job Leads", subtitle: "Applications & status",   accent: "#4a90c4", icon: "💼" },
 ];
 
 // ── Botanical SVG illustrations ───────────────────────────────────────────────
@@ -154,6 +156,7 @@ export default function DashboardPage() {
   const workoutMissedDays = useQuery(api.dashboard.getWorkoutMissedDays)  ?? [];
   const contentPosts      = useQuery(api.dashboard.getContentPosts)       ?? [];
   const projects          = useQuery(api.dashboard.getProjects)           ?? [];
+  const jobLeads          = useQuery(api.jobLeads.list, {})               ?? [];
 
   const upsertAccount     = useMutation(api.dashboard.upsertAccount);
   const generateUploadUrl = useMutation(api.dashboard.generateUploadUrl);
@@ -202,6 +205,8 @@ export default function DashboardPage() {
   const published         = contentPosts.filter((p) => p.status === "published").length;
   const activeProjects    = projects.filter((p) => p.status === "active").length;
   const shippedProjects   = projects.filter((p) => p.status === "shipped").length;
+  const sortedJobLeads    = [...jobLeads].sort((a, b) => b.updatedAt - a.updatedAt);
+  const mostRecentLead    = sortedJobLeads[0];
 
   const wgu    = schoolProgress && "totalCU" in schoolProgress ? schoolProgress : WGU_DEFAULTS;
   const wguPct = wgu.totalCU > 0 ? Math.round((earnedCU / wgu.totalCU) * 100) : 0;
@@ -222,6 +227,7 @@ export default function DashboardPage() {
     reading:  { line1: `${booksRead} read`,            line2: `${books.filter((b) => b.status === "reading").length} reading now` },
     projects: { line1: `${activeProjects} active`,     line2: `${shippedProjects} shipped` },
     content:  { line1: `${published} published`,       line2: `${inProgressContent} in progress · ${ideas} ideas` },
+    leads:    { line1: `${jobLeads.length} leads`,      line2: mostRecentLead ? `${mostRecentLead.company} · ${mostRecentLead.status}` : "No leads yet" },
   };
 
   const today     = new Date();
@@ -321,7 +327,7 @@ export default function DashboardPage() {
 
           <div
             className="h-full w-full p-3 relative z-10"
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "10px" }}
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "10px" }}
           >
             {CARD_CONFIG.map((card) => {
               const chart =
@@ -371,6 +377,7 @@ export default function DashboardPage() {
               {fullViewSection === "reading"  && <ReadingSection books={books} upsertBook={upsertBook} />}
               {fullViewSection === "projects" && <ProjectsSection projects={projects} upsertProject={upsertProject} />}
               {fullViewSection === "content"  && <ContentSection posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
+              {fullViewSection === "leads"    && <JobLeadsFeed />}
             </div>
           </div>
         </div>
