@@ -9,15 +9,29 @@ const ACCENT = "#c084fc";
 interface Props {
   books: Doc<"books">[];
   upsertBook: (args: { id?: Id<"books">; title: string; author: string; status: "want_to_read" | "reading" | "completed"; notes?: string }) => Promise<void>;
+  isDark?: boolean;
 }
 
-export default function ReadingSection({ books, upsertBook }: Props) {
+export default function ReadingSection({ books, upsertBook, isDark = true }: Props) {
   const [open, setOpen]         = useState(false);
   const [editing, setEditing]   = useState<Doc<"books"> | null>(null);
   const [title, setTitle]       = useState("");
   const [author, setAuthor]     = useState("");
   const [status, setStatus]     = useState<"want_to_read" | "reading" | "completed">("want_to_read");
   const [notes, setNotes]       = useState("");
+
+  const textMain  = isDark ? "text-white"    : "text-black";
+  const text70    = isDark ? "text-white/70" : "text-black/60";
+  const text60    = isDark ? "text-white/60" : "text-black/50";
+  const text40    = isDark ? "text-white/40" : "text-black/40";
+  const text35    = isDark ? "text-white/35" : "text-black/35";
+  const text30    = isDark ? "text-white/30" : "text-black/30";
+  const text25    = isDark ? "text-white/25" : "text-black/25";
+  const hoverRow  = isDark ? "hover:bg-white/5" : "hover:bg-black/5";
+  const softFill  = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const softBorder = isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.06)";
+  const dashedFill  = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
+  const dashedBorder = isDark ? "1px dashed rgba(255,255,255,0.08)" : "1px dashed rgba(0,0,0,0.1)";
 
   const reading   = books.filter((b) => b.status === "reading");
   const completed = books.filter((b) => b.status === "completed");
@@ -34,11 +48,15 @@ export default function ReadingSection({ books, upsertBook }: Props) {
 
   return (
     <div
-      className="h-full rounded-2xl p-5 flex flex-col overflow-hidden relative"
+      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, rgba(192,132,252,0.08) 0%, rgba(126,34,206,0.05) 100%)",
-        border: "1px solid rgba(192,132,252,0.2)",
-        boxShadow: "0 0 40px rgba(192,132,252,0.07), inset 0 1px 0 rgba(255,255,255,0.08)",
+        background: isDark
+          ? "linear-gradient(155deg, rgba(192,132,252,0.14) 0%, rgba(22,22,27,0.99) 42%)"
+          : "linear-gradient(155deg, rgba(192,132,252,0.10) 0%, #ffffff 42%)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+        boxShadow: isDark
+          ? "0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(192,132,252,0.10), inset 0 1px 0 rgba(255,255,255,0.06)"
+          : "0 30px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.85)",
       }}
     >
       <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(192,132,252,0.12) 0%, transparent 70%)" }} />
@@ -48,8 +66,8 @@ export default function ReadingSection({ books, upsertBook }: Props) {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(192,132,252,0.3), rgba(126,34,206,0.15))", border: "1px solid rgba(192,132,252,0.35)", boxShadow: "0 0 16px rgba(192,132,252,0.3)" }}>📚</div>
           <div>
-            <h2 className="text-sm font-bold text-white">Reading</h2>
-            <p className="text-xs text-white/40">
+            <h2 className={`text-sm font-bold ${textMain}`}>Reading</h2>
+            <p className={`text-xs ${text40}`}>
               <span style={{ color: ACCENT }}>{completed.length}</span> completed · {queue.length} in queue
             </p>
           </div>
@@ -73,19 +91,19 @@ export default function ReadingSection({ books, upsertBook }: Props) {
               { label: "Completed", value: completed.length, color: "#4ade80" },
               { label: "Queue",     value: queue.length,     color: "#94a3b8" },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: softFill, border: softBorder }}>
                 <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
-                <p className="text-xs text-white/35 mt-0.5">{s.label}</p>
+                <p className={`text-xs ${text35} mt-0.5`}>{s.label}</p>
               </div>
             ))}
           </div>
 
           {/* Currently reading */}
           <div className="flex flex-col gap-2 flex-1 min-h-0">
-            <p className="text-xs text-white/40 uppercase tracking-wider shrink-0">Currently Reading</p>
+            <p className={`text-xs ${text40} uppercase tracking-wider shrink-0`}>Currently Reading</p>
             {reading.length === 0 ? (
-              <div className="rounded-xl p-4 text-center text-sm text-white/25 flex-1 flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.08)" }}>
+              <div className={`rounded-xl p-4 text-center text-sm ${text25} flex-1 flex items-center justify-center`}
+                style={{ background: dashedFill, border: dashedBorder }}>
                 Pick up a book. A wealthy mind reads.
               </div>
             ) : (
@@ -96,8 +114,8 @@ export default function ReadingSection({ books, upsertBook }: Props) {
                     onClick={() => openEdit(b)}>
                     <span className="text-xl">📖</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{b.title}</p>
-                      <p className="text-xs text-white/40">{b.author}</p>
+                      <p className={`text-sm font-semibold ${textMain} truncate`}>{b.title}</p>
+                      <p className={`text-xs ${text40}`}>{b.author}</p>
                     </div>
                     <div className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: ACCENT }} />
                   </div>
@@ -111,14 +129,14 @@ export default function ReadingSection({ books, upsertBook }: Props) {
         <div className="flex flex-col min-h-0 gap-4">
           {queue.length > 0 && (
             <div className="flex flex-col min-h-0" style={{ flex: queue.length }}>
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">Up Next</p>
+              <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Up Next</p>
               <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
                 {queue.map((b) => (
-                  <div key={b._id} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-white/5 transition-colors" onClick={() => openEdit(b)}>
-                    <span className="text-sm text-white/30">○</span>
+                  <div key={b._id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${hoverRow} transition-colors`} onClick={() => openEdit(b)}>
+                    <span className={`text-sm ${text30}`}>○</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/70 truncate">{b.title}</p>
-                      <p className="text-xs text-white/30">{b.author}</p>
+                      <p className={`text-sm ${text70} truncate`}>{b.title}</p>
+                      <p className={`text-xs ${text30}`}>{b.author}</p>
                     </div>
                   </div>
                 ))}
@@ -128,14 +146,14 @@ export default function ReadingSection({ books, upsertBook }: Props) {
 
           {completed.length > 0 && (
             <div className="flex flex-col min-h-0" style={{ flex: completed.length }}>
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">Completed ({completed.length})</p>
+              <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Completed ({completed.length})</p>
               <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
                 {completed.map((b) => (
-                  <div key={b._id} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-white/5 transition-colors" onClick={() => openEdit(b)}>
+                  <div key={b._id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${hoverRow} transition-colors`} onClick={() => openEdit(b)}>
                     <span className="text-sm text-green-400">✓</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/60 truncate line-through decoration-white/20">{b.title}</p>
-                      <p className="text-xs text-white/25">{b.author}</p>
+                      <p className={`text-sm ${text60} truncate line-through ${isDark ? "decoration-white/20" : "decoration-black/20"}`}>{b.title}</p>
+                      <p className={`text-xs ${text25}`}>{b.author}</p>
                     </div>
                   </div>
                 ))}
@@ -145,17 +163,17 @@ export default function ReadingSection({ books, upsertBook }: Props) {
 
           {queue.length === 0 && completed.length === 0 && (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm text-white/25 text-center">Add books to your list.</p>
+              <p className={`text-sm ${text25} text-center`}>Add books to your list.</p>
             </div>
           )}
         </div>
       </div>
 
-      <AddModal title={editing ? "Edit Book" : "Add Book"} open={open} onClose={() => setOpen(false)} onSubmit={handleSubmit} accentColor={ACCENT}>
-        <FormField label="Title"><FormInput value={title} onChange={setTitle} placeholder="e.g. The Richest Man in Babylon" /></FormField>
-        <FormField label="Author"><FormInput value={author} onChange={setAuthor} placeholder="e.g. George S. Clason" /></FormField>
-        <FormField label="Status"><FormSelect value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: "want_to_read", label: "Want to Read" }, { value: "reading", label: "Currently Reading" }, { value: "completed", label: "Completed" }]} /></FormField>
-        <FormField label="Notes (optional)"><FormInput value={notes} onChange={setNotes} placeholder="Key takeaways..." /></FormField>
+      <AddModal title={editing ? "Edit Book" : "Add Book"} open={open} onClose={() => setOpen(false)} onSubmit={handleSubmit} accentColor={ACCENT} isDark={isDark}>
+        <FormField label="Title" isDark={isDark}><FormInput value={title} onChange={setTitle} placeholder="e.g. The Richest Man in Babylon" isDark={isDark} /></FormField>
+        <FormField label="Author" isDark={isDark}><FormInput value={author} onChange={setAuthor} placeholder="e.g. George S. Clason" isDark={isDark} /></FormField>
+        <FormField label="Status" isDark={isDark}><FormSelect value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: "want_to_read", label: "Want to Read" }, { value: "reading", label: "Currently Reading" }, { value: "completed", label: "Completed" }]} isDark={isDark} /></FormField>
+        <FormField label="Notes (optional)" isDark={isDark}><FormInput value={notes} onChange={setNotes} placeholder="Key takeaways..." isDark={isDark} /></FormField>
       </AddModal>
     </div>
   );

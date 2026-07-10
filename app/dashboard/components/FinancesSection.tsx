@@ -31,6 +31,7 @@ interface Props {
   generateUploadUrl: () => Promise<string>;
   saveFinanceFile: (args: { name: string; storageId: Id<"_storage">; notes?: string }) => Promise<void>;
   deleteFinanceFile: (args: { id: Id<"financeFiles"> }) => Promise<void>;
+  isDark?: boolean;
 }
 
 const typeColor: Record<string, string> = {
@@ -51,6 +52,7 @@ export default function FinancesSection({
   generateUploadUrl,
   saveFinanceFile,
   deleteFinanceFile,
+  isDark = true,
 }: Props) {
   const [accountModal, setAccountModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Doc<"accounts"> | null>(null);
@@ -62,6 +64,23 @@ export default function FinancesSection({
   const [newFileName, setNewFileName] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<Id<"financeFiles"> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const textMain  = isDark ? "text-white"    : "text-black";
+  const text90    = isDark ? "text-white/90" : "text-black/80";
+  const text50    = isDark ? "text-white/50" : "text-black/45";
+  const text40    = isDark ? "text-white/40" : "text-black/40";
+  const text35    = isDark ? "text-white/35" : "text-black/35";
+  const text25    = isDark ? "text-white/25" : "text-black/25";
+  const inputCls  = isDark
+    ? "bg-white/5 border border-white/10 text-white placeholder-white/30"
+    : "bg-black/5 border border-black/10 text-black placeholder-black/35";
+  const btnCls    = isDark
+    ? "bg-white/10 border border-white/20 hover:bg-white/15"
+    : "bg-black/5 border border-black/15 hover:bg-black/10";
+  const softFill  = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const softBorder = isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)";
+  const hoverOpenLink = isDark ? "hover:bg-white/10" : "hover:bg-black/5";
+  const deleteHover = isDark ? "hover:text-red-400 hover:bg-white/5" : "hover:text-red-500 hover:bg-black/5";
 
   const cash = accounts
     .filter((a) => a.type === "checking" || a.type === "savings")
@@ -127,11 +146,15 @@ export default function FinancesSection({
 
   return (
     <div
-      className="h-full rounded-2xl p-5 flex flex-col overflow-hidden relative"
+      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, rgba(74,222,128,0.07) 0%, rgba(21,128,61,0.05) 100%)",
-        border: "1px solid rgba(74,222,128,0.2)",
-        boxShadow: "0 0 40px rgba(74,222,128,0.07), inset 0 1px 0 rgba(255,255,255,0.08)",
+        background: isDark
+          ? "linear-gradient(155deg, rgba(74,222,128,0.14) 0%, rgba(22,22,27,0.99) 42%)"
+          : "linear-gradient(155deg, rgba(74,222,128,0.10) 0%, #ffffff 42%)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+        boxShadow: isDark
+          ? "0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(74,222,128,0.10), inset 0 1px 0 rgba(255,255,255,0.06)"
+          : "0 30px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.85)",
       }}
     >
       <div
@@ -152,8 +175,8 @@ export default function FinancesSection({
             💰
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">Finances</h2>
-            <p className="text-xs text-white/40">Net worth, accounts & files</p>
+            <h2 className={`text-sm font-bold ${textMain}`}>Finances</h2>
+            <p className={`text-xs ${text40}`}>Net worth, accounts & files</p>
           </div>
         </div>
         <button
@@ -179,7 +202,7 @@ export default function FinancesSection({
               boxShadow: "0 0 24px rgba(74,222,128,0.12)",
             }}
           >
-            <p className="text-xs text-white/40 uppercase tracking-widest mb-1">Total Net Worth</p>
+            <p className={`text-xs ${text40} uppercase tracking-widest mb-1`}>Total Net Worth</p>
             <p
               className="text-4xl font-black tracking-tight"
               style={{
@@ -190,18 +213,18 @@ export default function FinancesSection({
               {fmt(netWorth)}
             </p>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2 text-xs">
-              <span className="text-white/50">Cash:</span>
+              <span className={text50}>Cash:</span>
               <span className="text-blue-300">{fmt(cash)}</span>
-              <span className="text-white/40">·</span>
-              <span className="text-white/50">Investments:</span>
+              <span className={text40}>·</span>
+              <span className={text50}>Investments:</span>
               <span className="text-amber-300">{fmt(investments)}</span>
-              <span className="text-white/40">·</span>
-              <span className="text-white/50">Debt:</span>
+              <span className={text40}>·</span>
+              <span className={text50}>Debt:</span>
               <span className="text-red-400">{debt > 0 ? `-${fmt(debt)}` : fmt(0)}</span>
               {other !== 0 && (
                 <>
-                  <span className="text-white/40">·</span>
-                  <span className="text-white/50">Other:</span>
+                  <span className={text40}>·</span>
+                  <span className={text50}>Other:</span>
                   <span className="text-purple-300">{fmt(other)}</span>
                 </>
               )}
@@ -209,9 +232,9 @@ export default function FinancesSection({
           </div>
 
           <div className="flex flex-col min-h-0 flex-1">
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">Accounts</p>
+            <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Accounts</p>
             {accounts.length === 0 ? (
-              <p className="text-sm text-white/25 text-center py-4">No accounts yet.</p>
+              <p className={`text-sm ${text25} text-center py-4`}>No accounts yet.</p>
             ) : (
               <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 content-start pr-1">
                 {accounts.map((a) => (
@@ -234,12 +257,12 @@ export default function FinancesSection({
                     }}
                     onClick={() => openEditAccount(a)}
                   >
-                    <p className="text-xs text-white/40 capitalize mb-0.5">
+                    <p className={`text-xs ${text40} capitalize mb-0.5`}>
                       {a.type === "investment" && "investmentType" in a && a.investmentType
                         ? a.investmentType
                         : a.type}
                     </p>
-                    <p className="text-xs font-semibold text-white truncate">{a.name}</p>
+                    <p className={`text-xs font-semibold ${textMain} truncate`}>{a.name}</p>
                     <p className="text-sm font-bold mt-0.5" style={{ color: typeColor[a.type] }}>
                       {a.type === "debt" ? `-${fmt(a.balance)}` : fmt(a.balance)}
                     </p>
@@ -251,15 +274,15 @@ export default function FinancesSection({
         </div>
 
         <div className="flex flex-col min-h-0">
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">Files (e.g. credit report)</p>
-          <p className="text-xs text-white/35 mb-2">Save with date so you know when you can get a new free one.</p>
+          <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Files (e.g. credit report)</p>
+          <p className={`text-xs ${text35} mb-2`}>Save with date so you know when you can get a new free one.</p>
           <div className="shrink-0 flex flex-wrap gap-2 mb-2">
             <input
               type="text"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               placeholder="Name (e.g. Credit Report)"
-              className="rounded-lg px-2 py-1.5 text-xs bg-white/5 border border-white/10 text-white placeholder-white/30 flex-1 min-w-[120px]"
+              className={`rounded-lg px-2 py-1.5 text-xs flex-1 min-w-[120px] ${inputCls}`}
             />
             <input
               ref={fileInputRef}
@@ -272,14 +295,14 @@ export default function FinancesSection({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={fileUploading}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-50"
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${textMain} ${btnCls} disabled:opacity-50`}
             >
               {fileUploading ? "Uploading…" : "+ Add file"}
             </button>
           </div>
           {financeFiles.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm text-white/25 text-center">No files yet. Add a credit report or other doc.</p>
+              <p className={`text-sm ${text25} text-center`}>No files yet. Add a credit report or other doc.</p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
@@ -287,11 +310,11 @@ export default function FinancesSection({
                 <div
                   key={f._id}
                   className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{ background: softFill, border: softBorder }}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-white/90 truncate">{f.name}</p>
-                    <p className="text-xs text-white/40">
+                    <p className={`text-sm ${text90} truncate`}>{f.name}</p>
+                    <p className={`text-xs ${text40}`}>
                       {new Date(f.addedAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -305,7 +328,7 @@ export default function FinancesSection({
                         href={f.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-2 py-1 rounded text-xs font-medium text-[#60c8ff] hover:bg-white/10"
+                        className={`px-2 py-1 rounded text-xs font-medium text-[#60c8ff] ${hoverOpenLink}`}
                       >
                         Open
                       </a>
@@ -322,7 +345,7 @@ export default function FinancesSection({
                       }}
                       onBlur={() => setTimeout(() => setPendingDeleteId(null), 200)}
                       className={`px-2 py-1 rounded text-xs transition-all duration-200 min-w-[52px] ${
-                        pendingDeleteId !== f._id ? "hover:text-red-400 hover:bg-white/5" : ""
+                        pendingDeleteId !== f._id ? deleteHover : ""
                       }`}
                       style={
                         pendingDeleteId === f._id
@@ -332,7 +355,7 @@ export default function FinancesSection({
                               color: "#fca5a5",
                               boxShadow: "0 0 12px rgba(248,113,113,0.2)",
                             }
-                          : { color: "rgba(255,255,255,0.5)" }
+                          : { color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)" }
                       }
                     >
                       {pendingDeleteId === f._id ? "Sure?" : "Delete"}
@@ -351,11 +374,12 @@ export default function FinancesSection({
         onClose={() => setAccountModal(false)}
         onSubmit={handleAccountSubmit}
         accentColor={ACCENT}
+        isDark={isDark}
       >
-        <FormField label="Account Name">
-          <FormInput value={accName} onChange={setAccName} placeholder="e.g. Chase Checking" />
+        <FormField label="Account Name" isDark={isDark}>
+          <FormInput value={accName} onChange={setAccName} placeholder="e.g. Chase Checking" isDark={isDark} />
         </FormField>
-        <FormField label="Type">
+        <FormField label="Type" isDark={isDark}>
           <FormSelect
             value={accType}
             onChange={(v) => setAccType(v as typeof accType)}
@@ -366,19 +390,21 @@ export default function FinancesSection({
               { value: "debt", label: "Debt" },
               { value: "other", label: "Other" },
             ]}
+            isDark={isDark}
           />
         </FormField>
         {accType === "investment" && (
-          <FormField label="Investment type">
+          <FormField label="Investment type" isDark={isDark}>
             <FormSelect
               value={accInvestmentType}
               onChange={setAccInvestmentType}
               options={INVESTMENT_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              isDark={isDark}
             />
           </FormField>
         )}
-        <FormField label="Balance ($)">
-          <FormInput value={accBalance} onChange={setAccBalance} type="number" placeholder="0.00" />
+        <FormField label="Balance ($)" isDark={isDark}>
+          <FormInput value={accBalance} onChange={setAccBalance} type="number" placeholder="0.00" isDark={isDark} />
         </FormField>
       </AddModal>
     </div>

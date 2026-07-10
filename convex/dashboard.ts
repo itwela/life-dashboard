@@ -379,6 +379,60 @@ export const upsertBook = mutation({
   },
 });
 
+// ─── Todos (synced from the Obsidian vault Hub) ─────────────────────────────
+
+export const getTodos = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("todos").withIndex("by_order").collect();
+  },
+});
+
+export const seedTodos = mutation({
+  args: {
+    todos: v.array(
+      v.object({
+        text: v.string(),
+        category: v.string(),
+        done: v.boolean(),
+        order: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, { todos }) => {
+    const existing = await ctx.db.query("todos").collect();
+    for (const doc of existing) await ctx.db.delete(doc._id);
+    for (const t of todos) await ctx.db.insert("todos", t);
+    return { count: todos.length };
+  },
+});
+
+export const toggleTodo = mutation({
+  args: { id: v.id("todos"), done: v.boolean() },
+  handler: async (ctx, { id, done }) => {
+    await ctx.db.patch(id, { done });
+  },
+});
+
+export const addTodo = mutation({
+  args: { text: v.string(), category: v.string() },
+  handler: async (ctx, { text, category }) => {
+    const all = await ctx.db.query("todos").withIndex("by_order").collect();
+    const maxOrder = all.reduce((m, t) => Math.max(m, t.order), -1);
+    await ctx.db.insert("todos", { text, category, done: false, order: maxOrder + 1 });
+  },
+});
+
+// Persist a new ordering: order = index in the provided id list
+export const reorderTodos = mutation({
+  args: { ids: v.array(v.id("todos")) },
+  handler: async (ctx, { ids }) => {
+    for (let i = 0; i < ids.length; i++) {
+      await ctx.db.patch(ids[i], { order: i });
+    }
+  },
+});
+
 export const logWorkout = mutation({
   args: {
     exerciseType: v.string(),

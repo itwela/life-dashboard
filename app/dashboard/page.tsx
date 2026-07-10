@@ -1,151 +1,121 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import {
+  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Play, Eye, EyeOff, ListChecks, Briefcase,
+} from "lucide-react";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
 import ReadingSection from "./components/ReadingSection";
 import WorkoutsSection from "./components/WorkoutsSection";
 import ContentSection from "./components/ContentSection";
 import ProjectsSection from "./components/ProjectsSection";
-import BentoCard from "./components/BentoCard";
+import TodosSection from "./components/TodosSection";
 import AIAssistant from "./components/AIAssistant";
 import CheckInView from "./components/CheckInView";
 import { JobLeadsFeed } from "@/components/JobLeadsFeed";
-import {
-  SchoolDonutChart,
-  FitnessBarChart,
-  ReadingDonutChart,
-  ProjectsDonutChart,
-  ContentDonutChart,
-} from "./components/charts/CardCharts";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const WGU_DEFAULTS = { totalCU: 119, earnedCU: 43, activeCount: 13, termsCompleted: 5, termsTotal: 11 };
+type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "todos" | "leads";
 
-type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "leads";
+const LIGHT_VIDEO = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_103318_2aa26b55-df1a-43a6-903d-941e718c9366.mp4";
+const DARK_VIDEO  = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_102933_4e8f73b5-775a-4179-b2fb-472f59063dcd.mp4";
 
-const CARD_CONFIG: { key: TabKey; title: string; subtitle: string; accent: string; icon: string }[] = [
-  { key: "finances", title: "Finances",  subtitle: "Net worth & cash flow",  accent: "#c4912a", icon: "🌾" },
-  { key: "school",   title: "School",    subtitle: "Degree progress",         accent: "#7ab05a", icon: "🌿" },
-  { key: "fitness",  title: "Fitness",   subtitle: "Workouts & streak",       accent: "#e8734a", icon: "🌱" },
-  { key: "reading",  title: "Reading",   subtitle: "Books & queue",           accent: "#a085c4", icon: "🍃" },
-  { key: "projects", title: "Projects",  subtitle: "Active & shipped",        accent: "#d4a83a", icon: "🌻" },
-  { key: "content",  title: "Content",   subtitle: "Ideas & published",       accent: "#5a9e8a", icon: "🌺" },
-  { key: "leads",    title: "Job Leads", subtitle: "Applications & status",   accent: "#4a90c4", icon: "💼" },
-];
+// Deterministic placeholder color from seed string
+const PLACEHOLDER_COLORS = ["#3b82f6","#e8734a","#a085c4","#5a9e8a","#e05e36","#c4912a","#34d399","#f87171","#60a5fa","#fbbf24"];
+function placeholderColor(seed: string) {
+  const idx = seed.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % PLACEHOLDER_COLORS.length;
+  return PLACEHOLDER_COLORS[idx];
+}
 
-// ── Botanical SVG illustrations ───────────────────────────────────────────────
-
-function MonsteraLeaf({ suffix = "1" }: { suffix?: string }) {
-  const gId = `mon-grad-${suffix}`;
-  const lId = `mon-light-${suffix}`;
-  const mId = `mon-mask-${suffix}`;
+function Placeholder({ seed, size = 40, border }: { seed: string; size?: number; border?: string }) {
+  const color = placeholderColor(seed);
+  const letter = seed.replace(/[^a-zA-Z]/g, "").charAt(0).toUpperCase() || "·";
   return (
-    <svg viewBox="0 0 260 380" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
-      <defs>
-        <linearGradient id={gId} x1="25%" y1="5%" x2="75%" y2="95%">
-          <stop offset="0%"   stopColor="#5a9a6a"/>
-          <stop offset="45%"  stopColor="#3a7a4e"/>
-          <stop offset="100%" stopColor="#1a3a28"/>
-        </linearGradient>
-        <radialGradient id={lId} cx="35%" cy="28%" r="52%">
-          <stop offset="0%"   stopColor="#8acea0" stopOpacity="0.22"/>
-          <stop offset="100%" stopColor="#1a3a28" stopOpacity="0"/>
-        </radialGradient>
-        <mask id={mId}>
-          <rect fill="white" width="260" height="380"/>
-          {/* Left sinuses — cuts from edge toward center */}
-          <ellipse cx="-5"  cy="275" rx="80" ry="42" fill="black" transform="rotate(-14 -5 275)"/>
-          <ellipse cx="0"   cy="188" rx="75" ry="38" fill="black" transform="rotate(-8 0 188)"/>
-          <ellipse cx="14"  cy="116" rx="64" ry="31" fill="black" transform="rotate(-4 14 116)"/>
-          {/* Right sinuses */}
-          <ellipse cx="265" cy="275" rx="80" ry="42" fill="black" transform="rotate(14 265 275)"/>
-          <ellipse cx="260" cy="188" rx="75" ry="38" fill="black" transform="rotate(8 260 188)"/>
-          <ellipse cx="246" cy="116" rx="64" ry="31" fill="black" transform="rotate(4 246 116)"/>
-          {/* Fenestrations — internal holes */}
-          <ellipse cx="98"  cy="175" rx="22" ry="30" fill="black" transform="rotate(-14 98 175)"/>
-          <ellipse cx="162" cy="175" rx="22" ry="30" fill="black" transform="rotate(14 162 175)"/>
-          <ellipse cx="106" cy="113" rx="16" ry="22" fill="black" transform="rotate(-9 106 113)"/>
-          <ellipse cx="154" cy="113" rx="16" ry="22" fill="black" transform="rotate(9 154 113)"/>
-        </mask>
-      </defs>
-
-      {/* Petiole */}
-      <path d="M130 376 C129 354 127 325 123 294" stroke="#1e4530" strokeWidth="6" strokeLinecap="round"/>
-
-      {/* Leaf body + veins masked together */}
-      <g mask={`url(#${mId})`}>
-        <ellipse cx="130" cy="175" rx="112" ry="162" fill={`url(#${gId})`}/>
-        <ellipse cx="130" cy="175" rx="112" ry="162" fill={`url(#${lId})`}/>
-        {/* Central vein */}
-        <line x1="130" y1="294" x2="130" y2="18" stroke="#6ab87e" strokeWidth="1.6" opacity="0.32"/>
-        {/* Left secondary veins */}
-        <path d="M129 258 C114 244 90 230 62 216"  stroke="#6ab87e" strokeWidth="1.2" opacity="0.26"/>
-        <path d="M129 222 C113 210 88 200 58 190"  stroke="#6ab87e" strokeWidth="1.1" opacity="0.23"/>
-        <path d="M129 188 C113 176 88 166 56 156"  stroke="#6ab87e" strokeWidth="1"   opacity="0.2"/>
-        <path d="M129 154 C114 142 92 134 65 126"  stroke="#6ab87e" strokeWidth="0.9" opacity="0.18"/>
-        <path d="M129 122 C116 110 96 102 72 94"   stroke="#6ab87e" strokeWidth="0.8" opacity="0.16"/>
-        <path d="M129 92  C118 80  102 72 82 64"   stroke="#6ab87e" strokeWidth="0.7" opacity="0.14"/>
-        <path d="M130 64  C121 52  110 45 96 38"   stroke="#6ab87e" strokeWidth="0.6" opacity="0.12"/>
-        {/* Right secondary veins */}
-        <path d="M131 258 C146 244 170 230 198 216" stroke="#6ab87e" strokeWidth="1.2" opacity="0.26"/>
-        <path d="M131 222 C147 210 172 200 202 190" stroke="#6ab87e" strokeWidth="1.1" opacity="0.23"/>
-        <path d="M131 188 C147 176 172 166 204 156" stroke="#6ab87e" strokeWidth="1"   opacity="0.2"/>
-        <path d="M131 154 C146 142 168 134 195 126" stroke="#6ab87e" strokeWidth="0.9" opacity="0.18"/>
-        <path d="M131 122 C144 110 164 102 188 94"  stroke="#6ab87e" strokeWidth="0.8" opacity="0.16"/>
-        <path d="M131 92  C142 80  158 72 178 64"   stroke="#6ab87e" strokeWidth="0.7" opacity="0.14"/>
-        <path d="M130 64  C139 52  150 45 164 38"   stroke="#6ab87e" strokeWidth="0.6" opacity="0.12"/>
-      </g>
-    </svg>
+    <div style={{
+      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+      background: `linear-gradient(135deg, ${color}22, ${color}10)`,
+      border: border ?? `1.5px solid ${color}35`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.38, fontWeight: 700, color: color,
+      letterSpacing: "-0.01em",
+    }}>
+      {letter}
+    </div>
   );
 }
 
-function FernFrond() {
+// deterministic bar heights based on index
+function barH(i: number, active: boolean) {
+  const activePat = [35,45,30,55,40,65,50,75,60,85,70,80,65,55,45,70,60,75,55,65,50,75,60,55];
+  const greyPat   = [45,70,60,75,55,65,50,75,60,85,70,55,45,70,60,75,55,65,50,75,60,55,45,70,60,75,55,65,50,75,60,55,45,70,60,75];
+  if (active) return activePat[i % activePat.length];
+  return greyPat[i % greyPat.length];
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function CountBadge({ count, size = 38, isDark }: { count: string | number; size?: number; isDark: boolean }) {
   return (
-    <svg viewBox="0 0 220 460" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
-      {/* Main rachis — arching curve */}
-      <path d="M110 456 C108 420 100 380 88 338 C76 296 60 258 44 222 C32 194 22 168 16 142 C12 124 10 108 12 94"
-            stroke="#2d6040" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
-      {/* 14 pinna pairs — getting smaller toward apex */}
-      <path d="M109 440 C126 430 148 414 162 396" stroke="#3a7a4a" strokeWidth="1.4"  strokeLinecap="round"/>
-      <path d="M109 440 C92 430 70 414 56 396"    stroke="#3a7a4a" strokeWidth="1.4"  strokeLinecap="round"/>
-      <path d="M106 416 C122 406 144 390 157 373" stroke="#3a7a4a" strokeWidth="1.3"  strokeLinecap="round"/>
-      <path d="M106 416 C90 406 68 390 55 373"    stroke="#3a7a4a" strokeWidth="1.3"  strokeLinecap="round"/>
-      <path d="M101 390 C116 380 137 365 149 348" stroke="#3a7a4a" strokeWidth="1.25" strokeLinecap="round"/>
-      <path d="M101 390 C86 380 65 365 53 348"    stroke="#3a7a4a" strokeWidth="1.25" strokeLinecap="round"/>
-      <path d="M95 364 C110 354 129 339 140 323"  stroke="#3a7a4a" strokeWidth="1.2"  strokeLinecap="round"/>
-      <path d="M95 364 C80 354 61 339 50 323"     stroke="#3a7a4a" strokeWidth="1.2"  strokeLinecap="round"/>
-      <path d="M88 338 C102 328 120 313 130 298"  stroke="#3a7a4a" strokeWidth="1.1"  strokeLinecap="round"/>
-      <path d="M88 338 C74 328 56 313 46 298"     stroke="#3a7a4a" strokeWidth="1.1"  strokeLinecap="round"/>
-      <path d="M80 312 C93 302 110 287 119 272"   stroke="#3a7a4a" strokeWidth="1"    strokeLinecap="round"/>
-      <path d="M80 312 C67 302 50 287 41 272"     stroke="#3a7a4a" strokeWidth="1"    strokeLinecap="round"/>
-      <path d="M72 286 C84 276 100 262 108 248"   stroke="#3a7a4a" strokeWidth="0.95" strokeLinecap="round"/>
-      <path d="M72 286 C60 276 44 262 36 248"     stroke="#3a7a4a" strokeWidth="0.95" strokeLinecap="round"/>
-      <path d="M64 260 C75 250 90 237 97 223"     stroke="#3a7a4a" strokeWidth="0.9"  strokeLinecap="round"/>
-      <path d="M64 260 C53 250 38 237 31 223"     stroke="#3a7a4a" strokeWidth="0.9"  strokeLinecap="round"/>
-      <path d="M56 236 C66 226 80 213 86 200"     stroke="#3a7a4a" strokeWidth="0.8"  strokeLinecap="round"/>
-      <path d="M56 236 C46 226 32 213 26 200"     stroke="#3a7a4a" strokeWidth="0.8"  strokeLinecap="round"/>
-      <path d="M48 213 C57 203 70 191 75 179"     stroke="#3a7a4a" strokeWidth="0.75" strokeLinecap="round"/>
-      <path d="M48 213 C39 203 27 191 22 179"     stroke="#3a7a4a" strokeWidth="0.75" strokeLinecap="round"/>
-      <path d="M41 192 C49 182 61 171 65 160"     stroke="#3a7a4a" strokeWidth="0.7"  strokeLinecap="round"/>
-      <path d="M41 192 C33 182 22 171 18 160"     stroke="#3a7a4a" strokeWidth="0.7"  strokeLinecap="round"/>
-      <path d="M34 172 C41 163 52 153 56 143"     stroke="#3a7a4a" strokeWidth="0.6"  strokeLinecap="round"/>
-      <path d="M34 172 C27 163 17 153 14 143"     stroke="#3a7a4a" strokeWidth="0.6"  strokeLinecap="round"/>
-      <path d="M28 154 C35 145 44 136 48 127"     stroke="#3a7a4a" strokeWidth="0.5"  strokeLinecap="round"/>
-      <path d="M28 154 C21 145 13 136 10 127"     stroke="#3a7a4a" strokeWidth="0.5"  strokeLinecap="round"/>
-      <path d="M22 138 C28 130 36 122 39 114"     stroke="#3a7a4a" strokeWidth="0.45" strokeLinecap="round"/>
-      <path d="M22 138 C16 130 9 122 7 114"       stroke="#3a7a4a" strokeWidth="0.45" strokeLinecap="round"/>
-    </svg>
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", display: "flex",
+      alignItems: "center", justifyContent: "center",
+      fontSize: "0.75rem", fontWeight: 600, color: isDark ? "#fff" : "#1a1a1a",
+    }}>
+      {count}
+    </div>
   );
 }
 
-// ── Dashboard page ────────────────────────────────────────────────────────────
+function CardHeader({
+  title, subtitle, icon, isDark,
+}: {
+  title: string; subtitle: string;
+  icon: React.ReactNode; isDark: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <h3 style={{
+          margin: 0, fontSize: "1.2rem", fontWeight: 600,
+          letterSpacing: "-0.03em", color: isDark ? "#fff" : "#1a1a1a", lineHeight: 1.2,
+        }}>{title}</h3>
+        <p style={{ margin: "5px 0 0", fontSize: "0.8rem", color: isDark ? "#b0b0b0" : "#6b7280", fontWeight: 400 }}>{subtitle}</p>
+      </div>
+      <div style={{
+        width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+        background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: isDark ? "#b0b0b0" : "#6b7280",
+      }}>{icon}</div>
+    </div>
+  );
+}
+
+function CardFooter({ count, label, isDark }: { count: string | number; label?: string; isDark: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: "auto", paddingTop: 12 }}>
+      <CountBadge count={count} isDark={isDark} />
+      {label && <span style={{ fontSize: "0.75rem", color: isDark ? "#b0b0b0" : "#6b7280" }}>{label}</span>}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const [isDark, setIsDark] = useState(true);
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [closeTimer, setCloseTimer] = useState(true);
+  const [netWorthHidden, setNetWorthHidden] = useState(true);
 
+  // ── Convex data ──
   const accounts          = useQuery(api.dashboard.getAccounts)          ?? [];
   const financeFiles      = useQuery(api.dashboard.getFinanceFiles)       ?? [];
   const courses           = useQuery(api.dashboard.getCourses)            ?? [];
@@ -156,6 +126,7 @@ export default function DashboardPage() {
   const workoutMissedDays = useQuery(api.dashboard.getWorkoutMissedDays)  ?? [];
   const contentPosts      = useQuery(api.dashboard.getContentPosts)       ?? [];
   const projects          = useQuery(api.dashboard.getProjects)           ?? [];
+  const todos             = useQuery(api.dashboard.getTodos)              ?? [];
   const jobLeads          = useQuery(api.jobLeads.list, {})               ?? [];
 
   const upsertAccount     = useMutation(api.dashboard.upsertAccount);
@@ -173,211 +144,670 @@ export default function DashboardPage() {
   const updateContentPost = useMutation(api.dashboard.updateContentPost);
   const expandContentIdea = useAction(api.aiAssistant.expandContentIdea);
   const upsertProject     = useMutation(api.dashboard.upsertProject);
+  const toggleTodo        = useMutation(api.dashboard.toggleTodo);
+  const reorderTodos      = useMutation(api.dashboard.reorderTodos);
 
-  const financesCash        = accounts.filter((a) => a.type === "checking" || a.type === "savings").reduce((s, a) => s + a.balance, 0);
-  const financesInvestments = accounts.filter((a) => a.type === "investment").reduce((s, a) => s + a.balance, 0);
-  const financesDebt        = accounts.filter((a) => a.type === "debt").reduce((s, a) => s + a.balance, 0);
-  const netWorth            = financesCash + financesInvestments - financesDebt + accounts.filter((a) => a.type === "other").reduce((s, a) => s + a.balance, 0);
-  const earnedCU            = courses.filter((c) => c.status === "completed").reduce((s, c) => s + c.creditUnits, 0);
-  const activeCourseCount   = courses.filter((c) => c.status === "in_progress").length;
-  const notStartedCourseCount = courses.filter((c) => c.status === "not_started").length;
-  const completedCourseCount  = courses.filter((c) => c.status === "completed").length;
-  const booksRead           = books.filter((b) => b.status === "completed").length;
+  // ── Derived data ──
+  const financesCash        = accounts.filter(a => a.type==="checking"||a.type==="savings").reduce((s,a)=>s+a.balance,0);
+  const financesInvestments = accounts.filter(a=>a.type==="investment").reduce((s,a)=>s+a.balance,0);
+  const financesDebt        = accounts.filter(a=>a.type==="debt").reduce((s,a)=>s+a.balance,0);
+  const netWorth            = financesCash + financesInvestments - financesDebt + accounts.filter(a=>a.type==="other").reduce((s,a)=>s+a.balance,0);
+  const earnedCU            = courses.filter(c=>c.status==="completed").reduce((s,c)=>s+c.creditUnits,0);
+  const activeCourseCount   = courses.filter(c=>c.status==="in_progress").length;
+  const completedCourseCount = courses.filter(c=>c.status==="completed").length;
+  const booksRead           = books.filter(b=>b.status==="completed").length;
+  const booksReading        = books.filter(b=>b.status==="reading").length;
+  const booksQueued         = books.filter(b=>b.status==="want_to_read").length;
+  const ideas               = contentPosts.filter(p=>p.status==="idea").length;
+  const inProgressContent   = contentPosts.filter(p=>p.status==="in_progress").length;
+  const published           = contentPosts.filter(p=>p.status==="published").length;
+  const activeProjects      = projects.filter(p=>p.status==="active").length;
+  const shippedProjects     = projects.filter(p=>p.status==="shipped").length;
+  const todosOpen           = todos.filter(t=>!t.done);
+  const todosDone           = todos.length - todosOpen.length;
+  const TODO_CAT_PRIORITY   = ["Today","Work","Creative","Care","Morning","Mechanics","Content"];
+  const todosSorted         = [...todosOpen].sort((a,b)=>{
+    const pa = TODO_CAT_PRIORITY.indexOf(a.category); const pb = TODO_CAT_PRIORITY.indexOf(b.category);
+    return (pa<0?99:pa)-(pb<0?99:pb) || a.order-b.order;
+  });
+  const wgu                 = schoolProgress && "totalCU" in schoolProgress ? schoolProgress : WGU_DEFAULTS;
+  const wguPct              = wgu.totalCU > 0 ? Math.round((earnedCU/wgu.totalCU)*100) : 0;
+  const wguCuLeft           = wgu.totalCU - earnedCU;
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const workedOutDays = new Set(
-    workouts.map((w) => { const d = new Date(w.date); d.setHours(0,0,0,0); return d.getTime(); })
-  );
+  const todayStart = useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
+  const workedOutDays = useMemo(() => new Set(
+    workouts.map(w=>{ const d=new Date(w.date); d.setHours(0,0,0,0); return d.getTime(); })
+  ), [workouts]);
+
   let streak = 0;
-  for (let i = 0; i < 365; i++) {
-    const check = new Date(todayStart);
-    check.setDate(todayStart.getDate() - i);
+  for (let i=0; i<365; i++) {
+    const check = new Date(todayStart); check.setDate(todayStart.getDate()-i);
     if (workedOutDays.has(check.getTime())) streak++;
     else break;
   }
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 0 }).format(n);
+    new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",notation:"compact",maximumFractionDigits:0}).format(n);
 
-  const ideas             = contentPosts.filter((p) => p.status === "idea").length;
-  const inProgressContent = contentPosts.filter((p) => p.status === "in_progress").length;
-  const published         = contentPosts.filter((p) => p.status === "published").length;
-  const activeProjects    = projects.filter((p) => p.status === "active").length;
-  const shippedProjects   = projects.filter((p) => p.status === "shipped").length;
+  // 60-day bar data for fitness card
+  const bars60 = useMemo(() => Array.from({length:60},(_,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-(59-i)); d.setHours(0,0,0,0);
+    const active = workedOutDays.has(d.getTime());
+    return { active, height: barH(i, active) };
+  }), [workedOutDays]);
+
   const sortedJobLeads    = [...jobLeads].sort((a, b) => b.updatedAt - a.updatedAt);
   const mostRecentLead    = sortedJobLeads[0];
 
-  const wgu    = schoolProgress && "totalCU" in schoolProgress ? schoolProgress : WGU_DEFAULTS;
-  const wguPct = wgu.totalCU > 0 ? Math.round((earnedCU / wgu.totalCU) * 100) : 0;
-  const wguCuLeft = wgu.totalCU - earnedCU;
+  const activeBarCount = bars60.filter(b=>b.active).length;
 
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0,0,0,0); return d;
-  });
-  const workoutCountByDay = last7Days.map((d) => ({
-    day: d.toLocaleDateString("en-US", { weekday: "short" }),
-    count: workouts.filter((w) => { const wd = new Date(w.date); wd.setHours(0,0,0,0); return wd.getTime() === d.getTime(); }).length,
-  }));
+  // Dark mode body class
+  useEffect(() => {
+    document.body.classList.toggle("dark-mode", isDark);
+  }, [isDark]);
 
-  const summary: Record<TabKey, { line1: string; line2?: string }> = {
-    finances: { line1: fmt(netWorth),                  line2: `Cash ${fmt(financesCash)} · Inv ${fmt(financesInvestments)} · Debt -${fmt(financesDebt)}` },
-    school:   { line1: `${wguPct}% · ${wguCuLeft} CU left`, line2: `${activeCourseCount} active · ${completedCourseCount} done · ${notStartedCourseCount} not started` },
-    fitness:  { line1: `${streak} day streak`,         line2: `${workouts.length} workouts logged` },
-    reading:  { line1: `${booksRead} read`,            line2: `${books.filter((b) => b.status === "reading").length} reading now` },
-    projects: { line1: `${activeProjects} active`,     line2: `${shippedProjects} shipped` },
-    content:  { line1: `${published} published`,       line2: `${inProgressContent} in progress · ${ideas} ideas` },
-    leads:    { line1: `${jobLeads.length} leads`,      line2: mostRecentLead ? `${mostRecentLead.company} · ${mostRecentLead.status}` : "No leads yet" },
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+  // Card accent colors for dark text contrast
+  const sectionColors: Record<TabKey, string> = {
+    finances: "#c4912a",
+    school:   "#3b82f6",
+    fitness:  "#e8734a",
+    reading:  "#a085c4",
+    projects: "#3b82f6",
+    content:  "#5a9e8a",
+    todos:    "#818cf8",
+    leads:    "#4a90c4",
   };
 
-  const today     = new Date();
-  const dateNum   = today.getDate();
-  const dateLabel = today.toLocaleDateString("en-US", { weekday: "long", month: "long", year: "numeric" });
+  // ── Card styles ──
+  const solidStyle: React.CSSProperties = {
+    background: isDark ? "rgba(26,26,26,0.98)" : "#fff",
+    borderRadius: 40,
+    boxShadow: "0 4px 20px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.01)",
+    padding: "28px 28px",
+    display: "flex", flexDirection: "column",
+    overflow: "hidden", position: "relative",
+    cursor: "pointer",
+    transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+
+  const glassDarkStyle: React.CSSProperties = {
+    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
+    backdropFilter: "blur(8px) saturate(1.8)",
+    WebkitBackdropFilter: "blur(8px) saturate(1.8)",
+    borderRadius: 40,
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.3)"}`,
+    boxShadow: "0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.2)",
+    padding: "28px 28px",
+    display: "flex", flexDirection: "column",
+    overflow: "hidden", position: "relative",
+    cursor: "pointer",
+    transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+
+  const glassMidStyle: React.CSSProperties = {
+    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)",
+    backdropFilter: "blur(8px) saturate(1.8)",
+    WebkitBackdropFilter: "blur(8px) saturate(1.8)",
+    borderRadius: 40,
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)"}`,
+    boxShadow: "0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)",
+    padding: "28px 28px",
+    display: "flex", flexDirection: "column",
+    overflow: "hidden", position: "relative",
+    cursor: "pointer",
+    transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+
+  const hoverProps = {
+    onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+      (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px) scale(1.01)";
+      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 40px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06)";
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+      (e.currentTarget as HTMLDivElement).style.transform = "";
+      (e.currentTarget as HTMLDivElement).style.boxShadow = "";
+    },
+  };
+
+  const textMain = isDark ? "#fff" : "#1a1a1a";
+  const textMuted = isDark ? "#b0b0b0" : "#6b7280";
 
   return (
-    <div
-      className="h-screen flex flex-col overflow-hidden"
-      style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif", background: "linear-gradient(160deg, #060c05 0%, #08110a 45%, #0c1a0a 75%, #060e06 100%)" }}
-    >
-      {/* Ambient light pools */}
-      <div className="fixed pointer-events-none z-0" style={{ top: "-25vh", left: "-15vw", width: "75vw", height: "75vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(196,145,42,0.09) 0%, rgba(140,100,20,0.04) 40%, transparent 70%)", filter: "blur(80px)" }}/>
-      <div className="fixed pointer-events-none z-0" style={{ bottom: "-20vh", right: "-15vw", width: "65vw", height: "65vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(60,100,40,0.14) 0%, rgba(40,70,25,0.07) 40%, transparent 70%)", filter: "blur(80px)" }}/>
-      <div className="fixed pointer-events-none z-0" style={{ top: "40vh", left: "35vw", width: "40vw", height: "40vw", borderRadius: "50%", background: "radial-gradient(circle, rgba(122,176,90,0.05) 0%, transparent 70%)", filter: "blur(60px)" }}/>
+    <>
+      {/* ── Noise SVG filter ── */}
+      <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden>
+        <defs>
+          <filter id="noise-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise" />
+            <feComposite operator="in" in="noise" in2="SourceGraphic" result="masked" />
+          </filter>
+        </defs>
+      </svg>
 
-      {/* Header */}
-      <header
-        className="shrink-0 z-20 flex items-center px-6 py-3"
-        style={{ background: "rgba(5,10,4,0.92)", borderBottom: "1px solid rgba(122,176,90,0.08)", backdropFilter: "blur(24px)" }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(145deg, rgba(196,145,42,0.3), rgba(122,176,90,0.18))", border: "1px solid rgba(196,145,42,0.28)", boxShadow: "0 0 14px rgba(196,145,42,0.18)", fontFamily: "var(--font-cormorant)", fontSize: "16px", fontStyle: "italic", color: "rgba(196,145,42,0.9)" }}
-          >
-            ❧
-          </div>
-          <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "20px", fontWeight: 600, fontStyle: "italic", letterSpacing: "0.01em", background: "linear-gradient(135deg, #e8e0cc 0%, #c4912a 60%, #a07820 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-            The Process
-          </span>
+      {/* ── Background video ── */}
+      <video
+        key={isDark ? "dark" : "light"}
+        autoPlay muted loop playsInline
+        style={{
+          position: "fixed", inset: 0, width: "100%", height: "100%",
+          objectFit: "cover", zIndex: -1,
+        }}
+        src={isDark ? DARK_VIDEO : LIGHT_VIDEO}
+      />
+
+      {/* ── Top Navigation ── */}
+      <nav style={{
+        display: "grid",
+        gridTemplateColumns: "auto auto 1fr",
+        gap: 16,
+        alignItems: "center",
+        marginBottom: 40,
+        flexShrink: 0,
+      }}>
+        {/* 1. Profile */}
+        <div style={{ flexShrink: 0 }}>
+          <Placeholder seed="you" size={48} border="2px solid rgba(255,255,255,0.6)" />
         </div>
-      </header>
 
-      {/* Body — two-panel split */}
-      <div className="flex-1 min-h-0 flex overflow-hidden z-10">
+        {/* 2. Toggle container */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.7)"}`,
+          borderRadius: 100, padding: "6px 6px 6px 6px",
+        }}>
+          {/* Mode switch */}
+          <button
+            onClick={() => setIsDark(d => !d)}
+            style={{
+              width: 88, height: 48, borderRadius: 100, border: "none",
+              background: "#fff", cursor: "pointer", position: "relative",
+              flexShrink: 0, padding: 4,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
+            aria-label="Toggle dark mode"
+          >
+            {/* Track */}
+            <div style={{
+              position: "absolute", inset: 4,
+              background: "#3b82f6", borderRadius: 100,
+              transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+            }} />
+            {/* Handle */}
+            <div style={{
+              position: "absolute", top: "50%", left: 4,
+              width: 32, height: 32, borderRadius: "50%", background: "#fff",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              transform: `translate(${isDark ? "0px" : "48px"}, -50%)`,
+              transition: "transform 0.4s cubic-bezier(0.4,0,0.2,1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, zIndex: 1,
+            }}>
+              {isDark ? "☾" : "☀"}
+            </div>
+          </button>
+        </div>
 
-        {/* ── LEFT: Botanical panel ── */}
-        <div
-          className="shrink-0 flex flex-col relative overflow-hidden"
-          style={{ width: "288px", borderRight: "1px solid rgba(122,176,90,0.08)", background: "linear-gradient(180deg, #050c04 0%, #061008 55%, #081308 100%)" }}
-        >
-          {/* Soft green ambiance */}
-          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 55% 35%, rgba(74,122,90,0.07) 0%, transparent 62%)" }}/>
-
-          {/* Monstera — takes up top portion */}
-          <div className="flex-1 min-h-0 relative" style={{ padding: "18px 14px 4px" }}>
-            <MonsteraLeaf suffix="main" />
-            <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 62% 42%, rgba(196,145,42,0.055) 0%, transparent 52%)" }}/>
+        {/* 3. Meeting alert / date pill */}
+        <div className="meeting-alert" style={{
+          justifySelf: "center",
+          display: "flex", alignItems: "center", gap: 12,
+          background: isDark ? "rgba(30,30,30,0.9)" : "#fff",
+          borderRadius: 100, padding: "6px 6px 6px 16px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+          backdropFilter: "blur(8px)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"}`,
+        }}>
+          <span style={{ fontSize: "0.875rem", fontWeight: 500, color: textMain, whiteSpace: "nowrap" }}>
+            {dateLabel} · The Process
+          </span>
+          <div style={{
+            background: isDark ? "rgba(255,255,255,0.08)" : "#f0f0f0",
+            borderRadius: 100, padding: "4px 10px",
+            fontSize: "0.75rem", color: textMuted, fontWeight: 500,
+          }}>
+            {streak}d streak
           </div>
-
-          {/* Divider */}
-          <div style={{ height: "1px", background: "rgba(122,176,90,0.06)", margin: "0 22px" }}/>
-
-          {/* Date */}
-          <div className="shrink-0 px-6 pt-5 pb-2">
-            <p style={{ fontFamily: "var(--font-cormorant)", fontSize: "62px", lineHeight: 1, fontStyle: "italic", fontWeight: 400, color: "rgba(232,224,204,0.82)", letterSpacing: "-0.02em" }}>
-              {dateNum}
-            </p>
-            <p style={{ fontFamily: "var(--font-dm-sans)", fontSize: "9px", letterSpacing: "0.12em", color: "rgba(232,224,204,0.72)", textTransform: "uppercase", marginTop: "3px" }}>
-              {dateLabel}
-            </p>
-          </div>
-
-          {/* Quote */}
-          <div className="shrink-0 px-6 pb-4">
-            <p style={{ fontFamily: "var(--font-cormorant)", fontSize: "13px", fontStyle: "italic", color: "rgba(232,224,204,0.78)", lineHeight: 1.7, borderLeft: "2px solid rgba(196,145,42,0.25)", paddingLeft: "12px" }}>
-              &ldquo;Put simply, training is training—it&apos;s what a proper swordsman must do. These things I do are what a proper wealthy person does.&rdquo;
-            </p>
-          </div>
-
-          {/* Check-In */}
-          <div className="shrink-0 px-6 pb-6">
+          {closeTimer && (
             <button
-              onClick={() => setShowCheckIn(true)}
-              className="w-full py-2.5 rounded-xl transition-all"
-              style={{ fontFamily: "var(--font-cormorant)", fontSize: "15px", fontStyle: "italic", fontWeight: 500, background: "linear-gradient(135deg, rgba(196,145,42,0.16), rgba(122,176,90,0.09))", border: "1px solid rgba(196,145,42,0.28)", color: "rgba(196,145,42,0.86)", letterSpacing: "0.02em" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(196,145,42,0.26), rgba(122,176,90,0.16))"; e.currentTarget.style.borderColor = "rgba(196,145,42,0.48)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(196,145,42,0.16), rgba(122,176,90,0.09))"; e.currentTarget.style.borderColor = "rgba(196,145,42,0.28)"; }}
+              onClick={() => setCloseTimer(false)}
+              style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.3s ease",
+              }}
             >
-              ✦ Check-In
+              {/* Progress ring */}
+              <svg width="32" height="32" style={{ position: "absolute" }}>
+                <circle cx="16" cy="16" r="14" fill="none" stroke={isDark?"rgba(255,255,255,0.1)":"#e0e0e0"} strokeWidth="2"/>
+                <circle cx="16" cy="16" r="14" fill="none" stroke={textMain} strokeWidth="2"
+                  strokeDasharray="88" strokeDashoffset="25"
+                  style={{ transform: "rotate(-90deg)", transformOrigin: "center" }}/>
+              </svg>
+              <X size={12} color={textMain} style={{ position: "relative", zIndex: 1 }} />
+            </button>
+          )}
+        </div>
+
+      </nav>
+
+      {/* ── Dashboard Grid ── */}
+      <div
+        className="dash-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateRows: "1fr 1fr 1fr",
+          gap: 24,
+          maxWidth: 1400,
+          width: "100%",
+          margin: "0 auto",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+
+        {/* ─── Card 1: Check-In / New Entry (glass dark) ─── */}
+        <div
+          style={glassDarkStyle}
+          {...hoverProps}
+          onClick={() => setShowCheckIn(true)}
+        >
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "1px solid rgba(255,255,255,0.3)",
+            }}>
+              <Plus size={32} color="#fff" />
+            </div>
+            <span style={{ fontSize: "0.9rem", fontWeight: 500, color: "#fff", letterSpacing: "-0.01em" }}>
+              Check-In
+            </span>
+          </div>
+        </div>
+
+        {/* ─── Card 2: Projects (solid white) ─── */}
+        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("projects")}>
+          <CardHeader
+            title="Active Projects"
+            subtitle="Sprint Planning"
+            icon={<Zap size={20} />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <span style={{ fontSize: "2.8rem", fontWeight: 700, color: textMain, letterSpacing: "-0.05em", lineHeight: 1 }}>
+              {activeProjects}
+            </span>
+            <div>
+              <div style={{ fontSize: "0.8rem", color: textMuted, fontWeight: 500 }}>active</div>
+              <div style={{ fontSize: "0.8rem", color: textMuted }}>{shippedProjects} shipped</div>
+            </div>
+          </div>
+          <CardFooter count={projects.length || "—"} label="total projects" isDark={isDark} />
+        </div>
+
+        {/* ─── Card 3: Fitness / Weekly Insights (solid white + bar chart) ─── */}
+        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("fitness")}>
+          <CardHeader
+            title="Weekly Insights"
+            subtitle="Workout Activity"
+            icon={<BarChart2 size={20} />}
+            isDark={isDark}
+          />
+          {/* Bar chart */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 60, marginBottom: 8, flex: "0 0 60px" }}>
+            {bars60.map((b, i) => (
+              <div key={i} style={{
+                flex: 1, minWidth: 2, borderRadius: 2,
+                background: b.active ? "#3b82f6" : (isDark ? "rgba(255,255,255,0.12)" : "#e5e7eb"),
+                height: `${b.height}%`,
+                transition: "height 0.3s ease",
+              }} />
+            ))}
+          </div>
+          {/* Footer */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
+            <div style={{ fontSize: "0.75rem", color: textMuted }}>
+              {activeBarCount} active days · last 60
+            </div>
+            <div style={{
+              width: 54, height: 54, borderRadius: "50%",
+              background: "rgba(245,245,245,0.85)",
+              border: "1px solid rgba(0,0,0,0.06)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+              onClick={(e) => { e.stopPropagation(); setFullViewSection("fitness"); }}
+            >
+              <Play size={20} color="#000" fill="#000" />
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "1.1rem", fontWeight: 600, color: textMain }}>{streak}d</div>
+              <div style={{ fontSize: "0.7rem", color: textMuted }}>streak</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Card 4: School (glass dark) ─── */}
+        <div style={glassDarkStyle} {...hoverProps} onClick={() => setFullViewSection("school")}>
+          <CardHeader
+            title="Degree Progress"
+            subtitle="WGU · CS Program"
+            icon={<MoreHorizontal size={20} color="#fff" />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
+            {/* Progress bar */}
+            <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 100, height: 6, overflow: "hidden" }}>
+              <div style={{
+                width: `${wguPct}%`, height: "100%",
+                background: "#3b82f6", borderRadius: 100,
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "2.8rem", fontWeight: 700, color: "#fff", letterSpacing: "-0.05em", lineHeight: 1 }}>
+                {wguPct}%
+              </span>
+              <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.6)" }}>
+                {wguCuLeft} CU left
+              </span>
+            </div>
+            <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.55)" }}>
+              {activeCourseCount} active · {completedCourseCount} done
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: "50%",
+              background: "rgba(255,255,255,0.12)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "0.75rem", fontWeight: 600, color: "rgba(255,255,255,0.8)",
+            }}>
+              {earnedCU}
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.55)" }}>CU earned</span>
+          </div>
+        </div>
+
+        {/* ─── Card 5: Reading (solid white) ─── */}
+        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("reading")}>
+          <CardHeader
+            title="Reading List"
+            subtitle="Books & Queue"
+            icon={<BarChart2 size={20} />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
+            <div style={{ display: "flex", gap: 28 }}>
+              <div>
+                <div style={{ fontSize: "2.8rem", fontWeight: 700, color: sectionColors.reading, letterSpacing: "-0.04em", lineHeight: 1 }}>
+                  {booksReading}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: textMuted, marginTop: 4 }}>reading now</div>
+              </div>
+              <div>
+                <div style={{ fontSize: "2.8rem", fontWeight: 700, color: "#4ade80", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                  {booksRead}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: textMuted, marginTop: 4 }}>completed</div>
+              </div>
+            </div>
+            <div style={{ fontSize: "0.75rem", color: textMuted }}>
+              {booksQueued} in queue
+            </div>
+          </div>
+          <CardFooter count={books.length || "—"} label="total books" isDark={isDark} />
+        </div>
+
+        {/* ─── Card 6: Content (glass mid) ─── */}
+        <div style={glassMidStyle} {...hoverProps} onClick={() => setFullViewSection("content")}>
+          <CardHeader
+            title="Content Pipeline"
+            subtitle="Ideas & Published"
+            icon={<MoreHorizontal size={20} color={isDark?"#fff":"#1a1a1a"} />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
+            {[
+              { label: "Published", count: published, color: "#3b82f6" },
+              { label: "In Progress", count: inProgressContent, color: "#e8734a" },
+              { label: "Ideas", count: ideas, color: "#a085c4" },
+            ].map(item => (
+              <div key={item.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
+                  <span style={{ fontSize: "0.8rem", color: textMain }}>{item.label}</span>
+                </div>
+                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: textMain }}>{item.count}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+            <CountBadge count={contentPosts.length || "—"} isDark={isDark} />
+            <span style={{ fontSize: "0.75rem", color: textMuted }}>total posts</span>
+          </div>
+        </div>
+
+        {/* ─── Card 7: Finances (solid white) ─── */}
+        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("finances")}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <CardHeader
+                title="Net Worth"
+                subtitle="Cash · Investments · Debt"
+                icon={<Wallet size={20} />}
+                isDark={isDark}
+              />
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setNetWorthHidden(h => !h); }}
+              style={{
+                width: 36, height: 36, borderRadius: 12, flexShrink: 0, marginLeft: 8,
+                background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+                border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: isDark ? "#b0b0b0" : "#6b7280",
+              }}
+              title={netWorthHidden ? "Show net worth" : "Hide net worth"}
+            >
+              {netWorthHidden ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-
-          {/* Fern decoration — absolute bottom-right corner */}
-          <div className="absolute bottom-0 right-0 pointer-events-none" style={{ width: "132px", height: "232px", opacity: 0.13 }}>
-            <FernFrond />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+            <div style={{ fontSize: "2.4rem", fontWeight: 700, color: textMain, letterSpacing: "-0.05em", lineHeight: 1 }}>
+              {netWorthHidden ? "••••••" : fmt(netWorth)}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { label: netWorthHidden ? "Cash ••••" : `Cash ${fmt(financesCash)}`, c: "#3b82f6" },
+                { label: netWorthHidden ? "Inv ••••" : `Inv ${fmt(financesInvestments)}`, c: "#5a9e8a" },
+                { label: netWorthHidden ? "-••••" : `-${fmt(financesDebt)}`, c: "#e05e36" },
+              ].map(item => (
+                <span key={item.label} style={{
+                  fontSize: "0.7rem", padding: "2px 8px", borderRadius: 100,
+                  background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                  color: item.c, fontWeight: 500,
+                }}>
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+            <CountBadge count={accounts.length || "—"} isDark={isDark} />
+            <span style={{ fontSize: "0.75rem", color: textMuted }}>accounts tracked</span>
           </div>
         </div>
 
-        {/* ── RIGHT: Bento grid ── */}
-        <main className="flex-1 min-h-0 relative overflow-hidden">
-          {/* Ghost monstera — atmospheric, behind the cards */}
-          <div className="absolute pointer-events-none" style={{ right: "-6%", top: "3%", width: "50%", height: "94%", opacity: 0.038, zIndex: 0 }}>
-            <MonsteraLeaf suffix="ghost" />
-          </div>
-
+        {/* ─── Card 8: To-Do (synced from vault Hub) ─── */}
+        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("todos")}>
+          <CardHeader
+            title="To-Do"
+            subtitle="From your vault"
+            icon={<ListChecks size={20} />}
+            isDark={isDark}
+          />
           <div
-            className="h-full w-full p-3 relative z-10"
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "10px" }}
+            className="hide-scrollbar"
+            onWheel={(e) => e.stopPropagation()}
+            style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", paddingRight: 4 }}
           >
-            {CARD_CONFIG.map((card) => {
-              const chart =
-                card.key === "finances" ? null
-                : card.key === "school"   ? <SchoolDonutChart percentComplete={wguPct} accent={card.accent} />
-                : card.key === "fitness"  ? <FitnessBarChart data={workoutCountByDay} accent={card.accent} />
-                : card.key === "reading"  ? <ReadingDonutChart completed={booksRead} reading={books.filter((b) => b.status === "reading").length} wantToRead={books.filter((b) => b.status === "want_to_read").length} accent={card.accent} />
-                : card.key === "projects" ? <ProjectsDonutChart active={activeProjects} shipped={shippedProjects} accent={card.accent} />
-                : card.key === "content"  ? <ContentDonutChart published={published} inProgress={inProgressContent} ideas={ideas} accent={card.accent} />
-                : null;
-              return (
-                <BentoCard
-                  key={card.key}
-                  cardKey={card.key}
-                  title={card.title}
-                  subtitle={card.subtitle}
-                  icon={card.icon}
-                  line1={summary[card.key].line1}
-                  line2={summary[card.key].line2}
-                  accent={card.accent}
-                  onClick={() => setFullViewSection(card.key)}
-                  chart={chart}
-                />
-              );
-            })}
+            {todosSorted.length === 0 ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", color: textMuted }}>
+                All clear — nothing open.
+              </div>
+            ) : todosSorted.map((t) => (
+              <div
+                key={t._id}
+                onClick={(e) => { e.stopPropagation(); toggleTodo({ id: t._id, done: !t.done }); }}
+                style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", flexShrink: 0 }}
+                title="Click to complete"
+              >
+                <span style={{
+                  marginTop: 1, width: 16, height: 16, borderRadius: 6, flexShrink: 0,
+                  border: `1.5px solid ${sectionColors.todos}`,
+                  transition: "all 0.2s ease",
+                }} />
+                <span style={{
+                  fontSize: "0.8rem", color: textMain, lineHeight: 1.35,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {t.text}
+                </span>
+              </div>
+            ))}
           </div>
-        </main>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+            <CountBadge count={todosOpen.length} isDark={isDark} />
+            <span style={{ fontSize: "0.75rem", color: textMuted }}>{todosOpen.length} open · {todosDone} done</span>
+          </div>
+        </div>
+
+        {/* ─── Card 9: Job Leads (glass mid, read-only) ─── */}
+        <div style={glassMidStyle} {...hoverProps} onClick={() => setFullViewSection("leads")}>
+          <CardHeader
+            title="Job Leads"
+            subtitle="Applications & status"
+            icon={<Briefcase size={20} color={isDark ? "#fff" : "#1a1a1a"} />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+            <div style={{ fontSize: "2.4rem", fontWeight: 700, color: textMain, letterSpacing: "-0.05em", lineHeight: 1 }}>
+              {jobLeads.length}
+            </div>
+            <div style={{ fontSize: "0.8rem", color: textMuted }}>
+              {mostRecentLead ? `${mostRecentLead.company} · ${mostRecentLead.status}` : "No leads yet"}
+            </div>
+          </div>
+          <CardFooter count={jobLeads.length || "—"} label="total leads" isDark={isDark} />
+        </div>
       </div>
 
-      {/* Full-view modal */}
+      {/* ── Indicators ── */}
+      <div style={{
+        display: "flex", gap: 16, justifyContent: "center",
+        margin: "24px 0 0", flexShrink: 0,
+      }}>
+        {[1,0.3,0.3].map((opacity, i) => (
+          <div key={i} style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)",
+            opacity,
+            transition: "opacity 0.3s ease",
+          }} />
+        ))}
+      </div>
+
+      {/* ── Components button (fixed bottom-left) ── */}
+      <button
+        onClick={() => setShowCheckIn(true)}
+        style={{
+          position: "fixed", bottom: 32, left: 32,
+          width: 44, height: 44, borderRadius: 14,
+          border: `1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.6)"}`,
+          background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
+          backdropFilter: "blur(8px)",
+          cursor: "pointer",
+          display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 3,
+          padding: 10,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+          zIndex: 40,
+          transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+        title="Check-In"
+      >
+        {["c1","c2","c3","c4"].map(s => (
+          <Placeholder key={s} seed={s} size={10} />
+        ))}
+      </button>
+
+      {/* ── Full-view modal ── */}
       {fullViewSection && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "linear-gradient(160deg, #060d05 0%, #090f07 50%, #0c1509 100%)" }}>
-          <div className="shrink-0 flex items-center justify-between px-5 h-14" style={{ borderBottom: "1px solid rgba(122,176,90,0.1)", background: "rgba(6,10,5,0.92)", backdropFilter: "blur(16px)" }}>
-            <button onClick={() => setFullViewSection(null)} style={{ fontFamily: "var(--font-dm-sans)", fontSize: "13px", color: "rgba(232,224,204,0.72)" }} className="hover:text-[#c4912a] transition-colors">
+        <div className="fullview-backdrop" style={{
+          position: "fixed", inset: 0, zIndex: 50,
+          display: "flex", flexDirection: "column",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 28px", height: 76, flexShrink: 0,
+          }}>
+            <button
+              onClick={() => setFullViewSection(null)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: "0.85rem", fontWeight: 500, cursor: "pointer",
+                color: textMain,
+                padding: "9px 16px 9px 13px", borderRadius: 100,
+                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
+                backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)"}`,
+                boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+                transition: "transform 0.3s ease, background 0.3s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateX(-2px)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ""; }}
+            >
               ← Back
             </button>
-            <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "18px", fontStyle: "italic", fontWeight: 500, color: "rgba(232,224,204,0.85)" }}>
-              {CARD_CONFIG.find((c) => c.key === fullViewSection)?.title}
-            </span>
-            <div className="w-20" />
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: sectionColors[fullViewSection], boxShadow: `0 0 12px ${sectionColors[fullViewSection]}` }} />
+              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: textMain, letterSpacing: "-0.03em" }}>
+                {{
+                  finances: "Finances",
+                  school: "School",
+                  fitness: "Fitness",
+                  reading: "Reading",
+                  projects: "Projects",
+                  content: "Content",
+                  todos: "To-Do",
+                  leads: "Job Leads",
+                }[fullViewSection]}
+              </span>
+            </div>
+            <div style={{ width: 92 }} />
           </div>
-          <div className="flex-1 min-h-0 flex flex-col p-4">
-            <div className="flex-1 min-h-0 flex flex-col max-w-5xl w-full mx-auto">
-              {fullViewSection === "finances" && <FinancesSection accounts={accounts} financeFiles={financeFiles} upsertAccount={upsertAccount} generateUploadUrl={generateUploadUrl} saveFinanceFile={saveFinanceFile} deleteFinanceFile={deleteFinanceFile} />}
-              {fullViewSection === "school"   && <SchoolSection courses={courses} upsertCourse={upsertCourse} schoolProgress={schoolProgress && "totalCU" in schoolProgress ? schoolProgress : WGU_DEFAULTS} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
-              {fullViewSection === "fitness"  && <WorkoutsSection workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
-              {fullViewSection === "reading"  && <ReadingSection books={books} upsertBook={upsertBook} />}
-              {fullViewSection === "projects" && <ProjectsSection projects={projects} upsertProject={upsertProject} />}
-              {fullViewSection === "content"  && <ContentSection posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
-              {fullViewSection === "leads"    && <JobLeadsFeed />}
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "4px 28px 28px", overflowY: "auto" }}>
+            <div className="modal-panel-in" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto" }}>
+              {fullViewSection==="finances" && <FinancesSection isDark={isDark} accounts={accounts} financeFiles={financeFiles} upsertAccount={upsertAccount} generateUploadUrl={generateUploadUrl} saveFinanceFile={saveFinanceFile} deleteFinanceFile={deleteFinanceFile} />}
+              {fullViewSection==="school"   && <SchoolSection isDark={isDark} courses={courses} upsertCourse={upsertCourse} schoolProgress={wgu} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
+              {fullViewSection==="fitness"  && <WorkoutsSection isDark={isDark} workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
+              {fullViewSection==="reading"  && <ReadingSection isDark={isDark} books={books} upsertBook={upsertBook} />}
+              {fullViewSection==="projects" && <ProjectsSection isDark={isDark} projects={projects} upsertProject={upsertProject} />}
+              {fullViewSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
+              {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} reorderTodos={reorderTodos} />}
+              {fullViewSection==="leads"    && <JobLeadsFeed />}
             </div>
           </div>
         </div>
@@ -386,6 +816,6 @@ export default function DashboardPage() {
       {showCheckIn && <CheckInView onClose={() => setShowCheckIn(false)} />}
 
       <AIAssistant />
-    </div>
+    </>
   );
 }

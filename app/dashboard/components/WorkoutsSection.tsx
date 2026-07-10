@@ -18,6 +18,7 @@ interface Props {
   workoutMissedDays: number[];
   addMissedDay: (args: { date: number }) => Promise<void>;
   removeMissedDay: (args: { date: number }) => Promise<void>;
+  isDark?: boolean;
 }
 
 function getWeekDays() {
@@ -88,6 +89,7 @@ export default function WorkoutsSection({
   workoutMissedDays,
   addMissedDay,
   removeMissedDay,
+  isDark = true,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [exerciseType, setExerciseType] = useState("strength");
@@ -96,6 +98,18 @@ export default function WorkoutsSection({
   const [logForDate, setLogForDate] = useState<number | null>(null);
   const [weekDays, setWeekDays] = useState<Date[]>([]);
   const [missedPendingTs, setMissedPendingTs] = useState<number | null>(null);
+
+  const textMain  = isDark ? "text-white"    : "text-black";
+  const text90    = isDark ? "text-white/90" : "text-black/80";
+  const text80    = isDark ? "text-white/80" : "text-black/70";
+  const text40    = isDark ? "text-white/40" : "text-black/40";
+  const text30    = isDark ? "text-white/30" : "text-black/30";
+  const text25    = isDark ? "text-white/25" : "text-black/25";
+  const softFill  = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const softBorder = isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.07)";
+  const softBorderThin = isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)";
+  const neutralNum = isDark ? "#475569" : "#94a3b8";
+  const neutralNum2 = isDark ? "#e2e8f0" : "#334155";
 
   const schedule = workoutSchedule.length ? workoutSchedule : DEFAULT_SCHEDULE;
   const scheduleLabel = schedule
@@ -195,11 +209,15 @@ export default function WorkoutsSection({
 
   return (
     <div
-      className="h-full rounded-2xl p-5 flex flex-col overflow-hidden relative"
+      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, rgba(251,146,60,0.08) 0%, rgba(194,65,12,0.05) 100%)",
-        border: "1px solid rgba(251,146,60,0.2)",
-        boxShadow: "0 0 40px rgba(251,146,60,0.07), inset 0 1px 0 rgba(255,255,255,0.08)",
+        background: isDark
+          ? "linear-gradient(155deg, rgba(251,146,60,0.14) 0%, rgba(22,22,27,0.99) 42%)"
+          : "linear-gradient(155deg, rgba(251,146,60,0.10) 0%, #ffffff 42%)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+        boxShadow: isDark
+          ? "0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(251,146,60,0.10), inset 0 1px 0 rgba(255,255,255,0.06)"
+          : "0 30px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.85)",
       }}
     >
       <div
@@ -220,8 +238,8 @@ export default function WorkoutsSection({
             🔥
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">Workouts</h2>
-            <p className="text-xs text-white/40">Your days: {scheduleLabel}</p>
+            <h2 className={`text-sm font-bold ${textMain}`}>Workouts</h2>
+            <p className={`text-xs ${text40}`}>Your days: {scheduleLabel}</p>
           </div>
         </div>
         <button
@@ -243,44 +261,44 @@ export default function WorkoutsSection({
             <div
               className="rounded-xl p-4 text-center"
               style={{
-                background: streak > 0 ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.04)",
-                border: streak > 0 ? "1px solid rgba(251,146,60,0.25)" : "1px solid rgba(255,255,255,0.08)",
+                background: streak > 0 ? "rgba(251,146,60,0.12)" : softFill,
+                border: streak > 0 ? "1px solid rgba(251,146,60,0.25)" : softBorder,
                 boxShadow: streak > 0 ? "0 0 20px rgba(251,146,60,0.15)" : "none",
               }}
             >
-              <p className="text-xs text-white/40 mb-1">Streak</p>
+              <p className={`text-xs ${text40} mb-1`}>Streak</p>
               <p
                 className="text-3xl font-black"
                 style={{
-                  color: streak > 0 ? ACCENT : "#475569",
+                  color: streak > 0 ? ACCENT : neutralNum,
                   textShadow: streak > 0 ? "0 0 20px rgba(251,146,60,0.6)" : "none",
                 }}
               >
                 {streak}
               </p>
-              <p className="text-xs text-white/30 mt-0.5">days</p>
+              <p className={`text-xs ${text30} mt-0.5`}>days</p>
             </div>
             <div
               className="rounded-xl p-4 text-center"
               style={{
-                background: weekTotal > 0 && weekCount >= weekTotal ? "rgba(251,146,60,0.12)" : "rgba(255,255,255,0.04)",
+                background: weekTotal > 0 && weekCount >= weekTotal ? "rgba(251,146,60,0.12)" : softFill,
                 border:
                   weekTotal > 0 && weekCount >= weekTotal
                     ? "1px solid rgba(251,146,60,0.25)"
-                    : "1px solid rgba(255,255,255,0.08)",
+                    : softBorder,
               }}
             >
-              <p className="text-xs text-white/40 mb-1">Next 7 days</p>
-              <p className="text-3xl font-black" style={{ color: weekCount >= weekTotal && weekTotal ? ACCENT : "#e2e8f0" }}>
+              <p className={`text-xs ${text40} mb-1`}>Next 7 days</p>
+              <p className="text-3xl font-black" style={{ color: weekCount >= weekTotal && weekTotal ? ACCENT : neutralNum2 }}>
                 {weekCount}/{weekTotal}
               </p>
-              <p className="text-xs text-white/30 mt-0.5">scheduled</p>
+              <p className={`text-xs ${text30} mt-0.5`}>scheduled</p>
             </div>
           </div>
 
           {/* Quick Done / Missed for each scheduled day — scrollable */}
           <div className="flex-1 min-h-0 flex flex-col">
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">Quick mark</p>
+            <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Quick mark</p>
             <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
               {scheduledRows.map(({ date, label }) => {
                 const ts = date.getTime();
@@ -292,11 +310,11 @@ export default function WorkoutsSection({
                     key={ts}
                     className="flex items-center justify-between gap-2 py-2 px-3 rounded-xl"
                     style={{
-                      background: done ? "rgba(74,222,128,0.1)" : missed ? "rgba(248,113,113,0.1)" : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${done ? "rgba(74,222,128,0.25)" : missed ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.06)"}`,
+                      background: done ? "rgba(74,222,128,0.1)" : missed ? "rgba(248,113,113,0.1)" : softFill,
+                      border: `1px solid ${done ? "rgba(74,222,128,0.25)" : missed ? "rgba(248,113,113,0.25)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")}`,
                     }}
                   >
-                    <span className="text-sm text-white/90 truncate">
+                    <span className={`text-sm ${text90} truncate`}>
                       {DAY_LABELS[date.getDay()]} {date.getMonth() + 1}/{date.getDate()}
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -308,7 +326,7 @@ export default function WorkoutsSection({
                         style={{
                           background: done ? "rgba(74,222,128,0.25)" : "rgba(74,222,128,0.15)",
                           border: "1px solid rgba(74,222,128,0.35)",
-                          color: done ? "#4ade80" : "rgba(226,240,255,0.9)",
+                          color: done ? "#4ade80" : (isDark ? "rgba(226,240,255,0.9)" : "#15803d"),
                         }}
                       >
                         {done ? "✓ Done" : "Done"}
@@ -326,7 +344,7 @@ export default function WorkoutsSection({
                         style={{
                           background: missed ? "rgba(248,113,113,0.25)" : "rgba(248,113,113,0.1)",
                           border: "1px solid rgba(248,113,113,0.35)",
-                          color: missed ? "#f87171" : "rgba(226,240,255,0.7)",
+                          color: missed ? "#f87171" : (isDark ? "rgba(226,240,255,0.7)" : "#b91c1c"),
                         }}
                       >
                         {missedPendingTs === ts ? "…" : missed ? "Undo miss" : "Missed"}
@@ -340,10 +358,10 @@ export default function WorkoutsSection({
         </div>
 
         <div className="flex flex-col min-h-0">
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">Recent sessions</p>
+          <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Recent sessions</p>
           {workouts.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm text-white/25 text-center">No workouts logged yet.</p>
+              <p className={`text-sm ${text25} text-center`}>No workouts logged yet.</p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
@@ -354,20 +372,20 @@ export default function WorkoutsSection({
                     key={w._id}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                     style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: softFill,
+                      border: softBorderThin,
                     }}
                   >
                     <span className="text-base shrink-0">{ICONS[w.exerciseType] ?? "💪"}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/80 capitalize">{w.exerciseType}</p>
-                      {w.notes && <p className="text-xs text-white/30 truncate">{w.notes}</p>}
+                      <p className={`text-sm ${text80} capitalize`}>{w.exerciseType}</p>
+                      {w.notes && <p className={`text-xs ${text30} truncate`}>{w.notes}</p>}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-semibold" style={{ color: ACCENT }}>
                         {w.duration}m
                       </p>
-                      <p className="text-xs text-white/30">
+                      <p className={`text-xs ${text30}`}>
                         {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </p>
                     </div>
@@ -389,15 +407,16 @@ export default function WorkoutsSection({
         onSubmit={handleSubmit}
         accentColor={ACCENT}
         submitLabel="Log It 🔥"
+        isDark={isDark}
       >
-        <FormField label="Exercise Type">
-          <FormSelect value={exerciseType} onChange={setExerciseType} options={EXERCISE_TYPES} />
+        <FormField label="Exercise Type" isDark={isDark}>
+          <FormSelect value={exerciseType} onChange={setExerciseType} options={EXERCISE_TYPES} isDark={isDark} />
         </FormField>
-        <FormField label="Duration (minutes)">
-          <FormInput value={duration} onChange={setDuration} type="number" placeholder="45" />
+        <FormField label="Duration (minutes)" isDark={isDark}>
+          <FormInput value={duration} onChange={setDuration} type="number" placeholder="45" isDark={isDark} />
         </FormField>
-        <FormField label="Notes (optional)">
-          <FormInput value={notes} onChange={setNotes} placeholder="PRs, energy level..." />
+        <FormField label="Notes (optional)" isDark={isDark}>
+          <FormInput value={notes} onChange={setNotes} placeholder="PRs, energy level..." isDark={isDark} />
         </FormField>
       </AddModal>
     </div>

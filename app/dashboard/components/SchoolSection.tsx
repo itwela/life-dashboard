@@ -20,6 +20,7 @@ interface Props {
   schoolProgress: SchoolProgress;
   setSchoolProgress: (args: { totalCU: number; earnedCU: number; activeCount: number; termsCompleted: number; termsTotal: number }) => Promise<void>;
   seedSchoolData: () => Promise<{ courses: number }>;
+  isDark?: boolean;
 }
 
 const statusMeta = {
@@ -28,7 +29,7 @@ const statusMeta = {
   not_started: { label: "Not Started", color: "#94a3b8", bg: "rgba(148,163,184,0.12)" },
 };
 
-export default function SchoolSection({ courses, upsertCourse, schoolProgress, setSchoolProgress, seedSchoolData }: Props) {
+export default function SchoolSection({ courses, upsertCourse, schoolProgress, setSchoolProgress, seedSchoolData, isDark = true }: Props) {
   const [open, setOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
   const [seedLoading, setSeedLoading] = useState(false);
@@ -52,6 +53,17 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
   const earnedCU    = completed.reduce((s, c) => s + c.creditUnits, 0);
   const pct         = schoolProgress.totalCU > 0 ? Math.round((earnedCU / schoolProgress.totalCU) * 100) : 0;
   const cuRemaining = schoolProgress.totalCU - earnedCU;
+
+  const textMain  = isDark ? "text-white"    : "text-black";
+  const text80    = isDark ? "text-white/80" : "text-black/70";
+  const text60    = isDark ? "text-white/60" : "text-black/50";
+  const text40    = isDark ? "text-white/40" : "text-black/40";
+  const text35    = isDark ? "text-white/35" : "text-black/35";
+  const text30    = isDark ? "text-white/30" : "text-black/30";
+  const hoverRow  = isDark ? "hover:bg-white/5" : "hover:bg-black/5";
+  const softFill  = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const softBorder = isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.06)";
+  const trackFill = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
 
   function openAdd() { setEditing(null); setName(""); setCu("3"); setStatus("not_started"); setNotes(""); setOpen(true); }
   function openEdit(c: Doc<"courses">) { setEditing(c); setName(c.name); setCu(String(c.creditUnits)); setStatus(c.status); setNotes(c.notes ?? ""); setOpen(true); }
@@ -117,11 +129,15 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
 
   return (
     <div
-      className="h-full rounded-2xl p-5 flex flex-col overflow-hidden relative"
+      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(30,64,175,0.06) 100%)",
-        border: "1px solid rgba(96,165,250,0.2)",
-        boxShadow: "0 0 40px rgba(96,165,250,0.08), inset 0 1px 0 rgba(255,255,255,0.08)",
+        background: isDark
+          ? "linear-gradient(155deg, rgba(96,165,250,0.14) 0%, rgba(22,22,27,0.99) 42%)"
+          : "linear-gradient(155deg, rgba(96,165,250,0.10) 0%, #ffffff 42%)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+        boxShadow: isDark
+          ? "0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(96,165,250,0.10), inset 0 1px 0 rgba(255,255,255,0.06)"
+          : "0 30px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.85)",
       }}
     >
       <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.15) 0%, transparent 70%)" }} />
@@ -131,8 +147,8 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(96,165,250,0.3), rgba(59,130,246,0.15))", border: "1px solid rgba(96,165,250,0.35)", boxShadow: "0 0 16px rgba(96,165,250,0.3)" }}>🎓</div>
           <div>
-            <h2 className="text-sm font-bold text-white">School / WGU</h2>
-            <p className="text-xs text-white/40">Bachelor&apos;s Degree Progress</p>
+            <h2 className={`text-sm font-bold ${textMain}`}>School / WGU</h2>
+            <p className={`text-xs ${text40}`}>Bachelor&apos;s Degree Progress</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -176,22 +192,22 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
           {/* Progress */}
           <div className="space-y-2 shrink-0">
             <div className="flex items-end justify-between">
-              <span className="text-sm text-white/60">Program completed</span>
+              <span className={`text-sm ${text60}`}>Program completed</span>
               <span className="text-2xl font-bold" style={{ color: ACCENT }}>
-                {pct}%<span className="text-sm font-normal text-white/40"> · {cuRemaining} CU left</span>
+                {pct}%<span className={`text-sm font-normal ${text40}`}> · {cuRemaining} CU left</span>
               </span>
             </div>
-            <div className="h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <div className="h-3 rounded-full overflow-hidden" style={{ background: trackFill }}>
               <div className="h-full rounded-full relative overflow-hidden transition-all duration-700"
                 style={{ width: `${pct}%`, background: "linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)", boxShadow: "0 0 12px rgba(96,165,250,0.6)" }}>
                 <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)", backgroundSize: "200% 100%", animation: "shimmer 2s infinite" }} />
               </div>
             </div>
-            <p className="text-xs text-white/40">{schoolProgress.termsCompleted} / {schoolProgress.termsTotal} terms completed</p>
+            <p className={`text-xs ${text40}`}>{schoolProgress.termsCompleted} / {schoolProgress.termsTotal} terms completed</p>
             <button
               type="button"
               onClick={openProgress}
-              className="text-[10px] text-white/35 hover:text-white/60 mt-1"
+              className={`text-[10px] ${text35} ${isDark ? "hover:text-white/60" : "hover:text-black/60"} mt-1`}
             >
               Edit WGU progress
             </button>
@@ -204,9 +220,9 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
               { label: "Active", value: current.length, color: ACCENT },
               { label: "Queued", value: queued.length, color: "#94a3b8" },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: softFill, border: softBorder }}>
                 <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
-                <p className="text-xs text-white/35 mt-0.5">{s.label}</p>
+                <p className={`text-xs ${text35} mt-0.5`}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -214,15 +230,15 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
           {/* Currently in progress */}
           {current.length > 0 && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-white/40 uppercase tracking-wider">Currently Enrolled</p>
+              <p className={`text-xs ${text40} uppercase tracking-wider`}>Currently Enrolled</p>
               {current.map((c) => (
                 <div key={c._id} className="rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:scale-[1.01] transition-transform"
                   style={{ background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)" }}
                   onClick={() => openEdit(c)}>
                   <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{c.name}</p>
-                    <p className="text-xs text-white/40">{c.creditUnits} CU</p>
+                    <p className={`text-sm font-semibold ${textMain} truncate`}>{c.name}</p>
+                    <p className={`text-xs ${text40}`}>{c.creditUnits} CU</p>
                   </div>
                 </div>
               ))}
@@ -232,10 +248,10 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
 
         {/* Right: all other courses */}
         <div className="flex flex-col min-h-0">
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-2 shrink-0">All Courses</p>
+          <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>All Courses</p>
           {courses.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm text-white/25 text-center">No courses yet.</p>
+              <p className={`text-sm ${text30} text-center`}>No courses yet.</p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
@@ -248,13 +264,13 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
                   const meta = statusMeta[course.status];
                   return (
                     <div key={course._id}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-white/5 transition-colors"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${hoverRow} transition-colors`}
                       onClick={() => openEdit(course)}>
                       <span className="text-sm shrink-0" style={{ color: meta.color }}>
                         {course.status === "completed" ? "✓" : course.status === "in_progress" ? "●" : "○"}
                       </span>
-                      <span className="flex-1 text-sm text-white/80 truncate">{course.name}</span>
-                      <span className="text-xs text-white/30 shrink-0">{course.creditUnits} CU</span>
+                      <span className={`flex-1 text-sm ${text80} truncate`}>{course.name}</span>
+                      <span className={`text-xs ${text30} shrink-0`}>{course.creditUnits} CU</span>
                       <span className="text-xs px-2 py-0.5 rounded-full shrink-0" style={{ color: meta.color, background: meta.bg }}>{meta.label}</span>
                     </div>
                   );
@@ -264,19 +280,19 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
         </div>
       </div>
 
-      <AddModal title={editing ? "Edit Course" : "Add Course"} open={open} onClose={() => setOpen(false)} onSubmit={handleSubmit} accentColor={ACCENT}>
-        <FormField label="Course Name"><FormInput value={name} onChange={setName} placeholder="e.g. C955 Applied Probability" /></FormField>
-        <FormField label="Credit Units"><FormInput value={cu} onChange={setCu} type="number" placeholder="3" /></FormField>
-        <FormField label="Status"><FormSelect value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: "not_started", label: "Not Started" }, { value: "in_progress", label: "In Progress" }, { value: "completed", label: "Completed" }]} /></FormField>
-        <FormField label="Notes (optional)"><FormInput value={notes} onChange={setNotes} placeholder="Any notes..." /></FormField>
+      <AddModal title={editing ? "Edit Course" : "Add Course"} open={open} onClose={() => setOpen(false)} onSubmit={handleSubmit} accentColor={ACCENT} isDark={isDark}>
+        <FormField label="Course Name" isDark={isDark}><FormInput value={name} onChange={setName} placeholder="e.g. C955 Applied Probability" isDark={isDark} /></FormField>
+        <FormField label="Credit Units" isDark={isDark}><FormInput value={cu} onChange={setCu} type="number" placeholder="3" isDark={isDark} /></FormField>
+        <FormField label="Status" isDark={isDark}><FormSelect value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: "not_started", label: "Not Started" }, { value: "in_progress", label: "In Progress" }, { value: "completed", label: "Completed" }]} isDark={isDark} /></FormField>
+        <FormField label="Notes (optional)" isDark={isDark}><FormInput value={notes} onChange={setNotes} placeholder="Any notes..." isDark={isDark} /></FormField>
       </AddModal>
 
-      <AddModal title="WGU progress" open={progressOpen} onClose={() => setProgressOpen(false)} onSubmit={handleProgressSubmit} accentColor={ACCENT} submitLabel="Save">
-        <FormField label="Total CU (degree)"><FormInput value={totalCUInput} onChange={setTotalCUInput} type="number" placeholder="119" /></FormField>
-        <FormField label="Earned CU (done)"><FormInput value={earnedCUInput} onChange={setEarnedCUInput} type="number" placeholder="43" /></FormField>
-        <FormField label="Active (in progress now)"><FormInput value={activeCountInput} onChange={setActiveCountInput} type="number" placeholder="13" /></FormField>
-        <FormField label="Terms completed"><FormInput value={termsDoneInput} onChange={setTermsDoneInput} type="number" placeholder="5" /></FormField>
-        <FormField label="Terms total"><FormInput value={termsTotalInput} onChange={setTermsTotalInput} type="number" placeholder="11" /></FormField>
+      <AddModal title="WGU progress" open={progressOpen} onClose={() => setProgressOpen(false)} onSubmit={handleProgressSubmit} accentColor={ACCENT} submitLabel="Save" isDark={isDark}>
+        <FormField label="Total CU (degree)" isDark={isDark}><FormInput value={totalCUInput} onChange={setTotalCUInput} type="number" placeholder="119" isDark={isDark} /></FormField>
+        <FormField label="Earned CU (done)" isDark={isDark}><FormInput value={earnedCUInput} onChange={setEarnedCUInput} type="number" placeholder="43" isDark={isDark} /></FormField>
+        <FormField label="Active (in progress now)" isDark={isDark}><FormInput value={activeCountInput} onChange={setActiveCountInput} type="number" placeholder="13" isDark={isDark} /></FormField>
+        <FormField label="Terms completed" isDark={isDark}><FormInput value={termsDoneInput} onChange={setTermsDoneInput} type="number" placeholder="5" isDark={isDark} /></FormField>
+        <FormField label="Terms total" isDark={isDark}><FormInput value={termsTotalInput} onChange={setTermsTotalInput} type="number" placeholder="11" isDark={isDark} /></FormField>
       </AddModal>
     </div>
   );
