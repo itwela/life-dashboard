@@ -447,6 +447,8 @@ export default function DashboardPage() {
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
+          // Breathing room so the hover lift/scale isn't clipped by the scroll edge.
+          padding: "8px 8px 20px",
         }}
       >
 

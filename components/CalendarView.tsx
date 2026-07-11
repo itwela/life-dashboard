@@ -42,6 +42,7 @@ export default function CalendarView({
   const [drag, setDrag] = useState<DragPayload | null>(null);
   const [editingId, setEditingId] = useState<Id<"calendarEvents"> | null>(null);
   const [editText, setEditText] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{ id: Id<"calendarEvents">; title: string } | null>(null);
 
   const textMain = isDark ? "text-white" : "text-black";
   const text40 = isDark ? "text-white/40" : "text-black/40";
@@ -343,7 +344,7 @@ export default function CalendarView({
                       <button
                         style={{ color: mutedText }}
                         title={e.source === "vault" ? "Delete (returns on next vault sync)" : "Delete"}
-                        onClick={() => deleteEvent({ id: e._id })}
+                        onClick={() => setPendingDelete({ id: e._id, title: e.title })}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -370,6 +371,46 @@ export default function CalendarView({
             </p>
           </div>
         </div>
+
+        {/* Delete confirmation */}
+        {pendingDelete && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", borderRadius: "inherit" }}
+            onClick={() => setPendingDelete(null)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl p-5"
+              style={{
+                background: isDark ? "rgba(24,24,29,0.99)" : "#fff",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
+                boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className={`text-base font-bold mb-1 ${textMain}`}>Delete this event?</p>
+              <p className={`text-sm mb-4 ${text60}`}>
+                &ldquo;{pendingDelete.title}&rdquo; will be removed from the calendar. This can&apos;t be undone.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-3.5 py-2 rounded-xl text-sm font-medium"
+                  style={{ border: rowBorder, color: mutedText }}
+                  onClick={() => setPendingDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-3.5 py-2 rounded-xl text-sm font-semibold text-white"
+                  style={{ background: "#dc2626" }}
+                  onClick={() => { deleteEvent({ id: pendingDelete.id }); setPendingDelete(null); }}
+                >
+                  Yes, delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

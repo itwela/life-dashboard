@@ -212,6 +212,12 @@ button, .card-hover {
   .dash-grid {
     grid-template-columns: 1fr 1fr !important;
     grid-auto-rows: 280px !important;
+    /* On tablet/mobile the <body> is the scroll container; the grid must flow
+       naturally instead of being its own clipped flex/scroll box, or the last
+       card gets cut off. */
+    flex: none !important;
+    min-height: auto !important;
+    overflow: visible !important;
   }
 }
 
