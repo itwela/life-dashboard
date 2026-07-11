@@ -16,9 +16,9 @@ type SchoolProgress = {
 
 interface Props {
   courses: Doc<"courses">[];
-  upsertCourse: (args: { id?: Id<"courses">; name: string; creditUnits: number; status: "not_started" | "in_progress" | "completed"; notes?: string }) => Promise<void>;
+  upsertCourse: (args: { id?: Id<"courses">; name: string; creditUnits: number; status: "not_started" | "in_progress" | "completed"; notes?: string }) => Promise<unknown>;
   schoolProgress: SchoolProgress;
-  setSchoolProgress: (args: { totalCU: number; earnedCU: number; activeCount: number; termsCompleted: number; termsTotal: number }) => Promise<void>;
+  setSchoolProgress: (args: { totalCU: number; earnedCU: number; activeCount: number; termsCompleted: number; termsTotal: number }) => Promise<unknown>;
   seedSchoolData: () => Promise<{ courses: number }>;
   isDark?: boolean;
 }

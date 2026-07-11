@@ -13,11 +13,11 @@ const DEFAULT_SCHEDULE = [0, 2, 4, 5];
 
 interface Props {
   workouts: Doc<"workouts">[];
-  logWorkout: (args: { exerciseType: string; duration: number; notes?: string; date?: number }) => Promise<void>;
+  logWorkout: (args: { exerciseType: string; duration: number; notes?: string; date?: number }) => Promise<unknown>;
   workoutSchedule: number[];
   workoutMissedDays: number[];
-  addMissedDay: (args: { date: number }) => Promise<void>;
-  removeMissedDay: (args: { date: number }) => Promise<void>;
+  addMissedDay: (args: { date: number }) => Promise<unknown>;
+  removeMissedDay: (args: { date: number }) => Promise<unknown>;
   isDark?: boolean;
 }
 

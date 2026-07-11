@@ -8,7 +8,7 @@ const ACCENT = "#fbbf24";
 
 interface Props {
   projects: Doc<"projects">[];
-  upsertProject: (args: { id?: Id<"projects">; name: string; description?: string; status: "active" | "paused" | "shipped"; revenue?: number; notes?: string }) => Promise<void>;
+  upsertProject: (args: { id?: Id<"projects">; name: string; description?: string; status: "active" | "paused" | "shipped"; revenue?: number; notes?: string }) => Promise<unknown>;
   isDark?: boolean;
 }
 

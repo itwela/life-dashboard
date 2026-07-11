@@ -8,8 +8,8 @@ const ACCENT = "#22d3ee";
 
 interface Props {
   posts: Doc<"contentPosts">[];
-  addContentPost: (args: { title: string; platform: string; type: "beat" | "video" | "article" | "other"; status: "idea" | "in_progress" | "published" }) => Promise<void>;
-  updateContentPost: (args: { id: Id<"contentPosts">; status: "idea" | "in_progress" | "published"; publishedDate?: number; title?: string; notes?: string }) => Promise<void>;
+  addContentPost: (args: { title: string; platform: string; type: "beat" | "video" | "article" | "other"; status: "idea" | "in_progress" | "published" }) => Promise<unknown>;
+  updateContentPost: (args: { id: Id<"contentPosts">; status: "idea" | "in_progress" | "published"; publishedDate?: number; title?: string; notes?: string }) => Promise<unknown>;
   expandContentIdea: (args: { title: string; platform: string; type: string; brainstorm: string }) => Promise<{ betterTitle: string; plan: string }>;
   isDark?: boolean;
 }

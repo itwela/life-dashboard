@@ -8,7 +8,7 @@ const ACCENT = "#c084fc";
 
 interface Props {
   books: Doc<"books">[];
-  upsertBook: (args: { id?: Id<"books">; title: string; author: string; status: "want_to_read" | "reading" | "completed"; notes?: string }) => Promise<void>;
+  upsertBook: (args: { id?: Id<"books">; title: string; author: string; status: "want_to_read" | "reading" | "completed"; notes?: string }) => Promise<unknown>;
   isDark?: boolean;
 }
 

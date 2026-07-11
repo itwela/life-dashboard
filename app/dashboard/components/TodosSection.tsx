@@ -13,8 +13,8 @@ const catRank = (c: string) => {
 
 interface Props {
   todos: Doc<"todos">[];
-  toggleTodo: (args: { id: Id<"todos">; done: boolean }) => Promise<void>;
-  reorderTodos: (args: { ids: Id<"todos">[] }) => Promise<void>;
+  toggleTodo: (args: { id: Id<"todos">; done: boolean }) => Promise<unknown>;
+  reorderTodos: (args: { ids: Id<"todos">[] }) => Promise<unknown>;
   isDark?: boolean;
 }
 

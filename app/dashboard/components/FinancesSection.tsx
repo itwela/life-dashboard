@@ -27,10 +27,10 @@ interface Props {
     type: "checking" | "savings" | "investment" | "debt" | "other";
     balance: number;
     investmentType?: string;
-  }) => Promise<void>;
+  }) => Promise<unknown>;
   generateUploadUrl: () => Promise<string>;
-  saveFinanceFile: (args: { name: string; storageId: Id<"_storage">; notes?: string }) => Promise<void>;
-  deleteFinanceFile: (args: { id: Id<"financeFiles"> }) => Promise<void>;
+  saveFinanceFile: (args: { name: string; storageId: Id<"_storage">; notes?: string }) => Promise<unknown>;
+  deleteFinanceFile: (args: { id: Id<"financeFiles"> }) => Promise<unknown>;
   isDark?: boolean;
 }
 
