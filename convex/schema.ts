@@ -127,7 +127,8 @@ export default defineSchema({
     date: v.string(), // "YYYY-MM-DD"
     title: v.string(),
     source: v.union(v.literal("vault"), v.literal("manual")),
-    note: v.optional(v.string()),
+    note: v.optional(v.string()), // full detail (time, who, confirmation #, etc.)
+    link: v.optional(v.string()), // associated URL (Zoom, portal, scholarship page…)
   }).index("by_date", ["date"]),
 
   checkIns: defineTable({

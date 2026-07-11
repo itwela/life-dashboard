@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { X, ChevronLeft, ChevronRight, Plus, Trash2, Check, Smile } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Plus, Trash2, Check, Smile, ExternalLink } from "lucide-react";
 
 const ACCENT = "#38bdf8";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -83,10 +83,14 @@ export default function CalendarView({
   });
 
   const submitNew = async () => {
-    const title = newTitle.trim();
-    if (!title) return;
+    const raw = newTitle.trim();
+    if (!raw) return;
     setNewTitle("");
-    await addEvent({ date: selected, title });
+    // Pull a pasted URL out of the text so it becomes a clickable link on the event.
+    const urlMatch = raw.match(/https?:\/\/\S+/);
+    const link = urlMatch ? urlMatch[0] : undefined;
+    const title = (link ? raw.replace(link, "").trim() : raw).replace(/\s+/g, " ") || "Link";
+    await addEvent({ date: selected, title, note: link ? raw : undefined, link });
   };
 
   // Apply a drop onto a day cell: move an event to that day, or turn a todo into an event.
@@ -243,9 +247,9 @@ export default function CalendarView({
                             background: e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
                             color: e.source === "manual" ? "#34d399" : ACCENT,
                           }}
-                          title={e.title}
+                          title={e.note || e.title}
                         >
-                          {e.title}
+                          {e.link ? "🔗 " : ""}{e.title}
                         </span>
                       ))}
                       {dayEvents.length > 4 && (
@@ -298,8 +302,22 @@ export default function CalendarView({
                           {e.title}
                         </p>
                       )}
-                      {e.note && <p className={`text-sm mt-0.5 ${text40}`}>{e.note}</p>}
-                      <p className={`text-[11px] uppercase tracking-wide mt-1 ${text40}`}>
+                      {e.note && e.note !== e.title && (
+                        <p className={`text-sm mt-1 leading-snug ${text60}`}>{e.note}</p>
+                      )}
+                      {e.link && (
+                        <a
+                          href={e.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(ev) => ev.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-sm mt-1.5 font-medium hover:underline"
+                          style={{ color: ACCENT }}
+                        >
+                          <ExternalLink size={13} /> Open link
+                        </a>
+                      )}
+                      <p className={`text-[11px] uppercase tracking-wide mt-1.5 ${text40}`}>
                         {e.source === "manual" ? "added" : "from vault"}
                       </p>
                     </div>

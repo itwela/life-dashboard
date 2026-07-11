@@ -569,9 +569,9 @@ export const getCalendarEvents = query({
 });
 
 export const addCalendarEvent = mutation({
-  args: { date: v.string(), title: v.string(), note: v.optional(v.string()) },
-  handler: async (ctx, { date, title, note }) => {
-    await ctx.db.insert("calendarEvents", { date, title, note, source: "manual" });
+  args: { date: v.string(), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
+  handler: async (ctx, { date, title, note, link }) => {
+    await ctx.db.insert("calendarEvents", { date, title, note, link, source: "manual" });
   },
 });
 
@@ -590,12 +590,14 @@ export const updateCalendarEvent = mutation({
     date: v.optional(v.string()),
     title: v.optional(v.string()),
     note: v.optional(v.string()),
+    link: v.optional(v.string()),
   },
-  handler: async (ctx, { id, date, title, note }) => {
+  handler: async (ctx, { id, date, title, note, link }) => {
     const patch: Record<string, unknown> = { source: "manual" };
     if (date !== undefined) patch.date = date;
     if (title !== undefined) patch.title = title;
     if (note !== undefined) patch.note = note;
+    if (link !== undefined) patch.link = link;
     await ctx.db.patch(id, patch);
   },
 });
@@ -605,7 +607,12 @@ export const updateCalendarEvent = mutation({
 export const seedCalendarEvents = mutation({
   args: {
     events: v.array(
-      v.object({ date: v.string(), title: v.string(), note: v.optional(v.string()) })
+      v.object({
+        date: v.string(),
+        title: v.string(),
+        note: v.optional(v.string()),
+        link: v.optional(v.string()),
+      })
     ),
   },
   handler: async (ctx, { events }) => {

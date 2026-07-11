@@ -4,11 +4,14 @@
 //
 //   node scripts/sync-calendar.mjs
 //
-// What it extracts from open `- [ ]` todos:
-//   1. Explicit dates ("Sep 5", "Jul 14") -> one event on that date (current year,
-//      only if today or later so the calendar isn't littered with stale dates).
-//   2. Weekday recurrences ("Mon/Wed/Fri", "— Monday", "Sun, Wed, Fri") -> one event
-//      per matching day of the CURRENT month.
+// Each event carries a concise `title` (the label shown on the month grid) plus the
+// FULL `note` (time, who, confirmation #, etc.) and any `link` (Zoom, portal…) so the
+// detail shows on the day panel. Two kinds of dated item:
+//   1. A line with an explicit "Mon D" date -> one event on that date (this-year, today
+//      or later). An explicit date wins: the line is NOT also treated as recurring even
+//      if it says "Wed, Jul 22" (the "Wed" is describing that one date, not a schedule).
+//   2. A line with NO explicit date but a weekday schedule ("Mon, Wed, Fri", "— Monday")
+//      -> one event per matching weekday of the CURRENT month.
 import { readFileSync } from "fs";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
@@ -31,13 +34,36 @@ function fmt(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function cleanTitle(raw) {
-  return raw
+// First URL in the line: markdown [text](url) first, else a bare http(s) URL.
+function extractLink(text) {
+  const md = text.match(/\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/);
+  if (md) return md[1];
+  const bare = text.match(/https?:\/\/[^\s)\]]+/);
+  return bare ? bare[0] : undefined;
+}
+
+// Full human-readable detail: strip bold, turn [text](url) into "text (url)", turn
+// [[wikilink|alias]] into its alias, collapse whitespace. Keeps everything (time, who,
+// confirmation #, purpose) so nothing is lost on the day panel.
+function cleanNote(text) {
+  return text
     .replace(/\*\*/g, "")
+    .replace(/\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, "$1 ($2)")
+    .replace(/\[\[([^\]|]+)\|?[^\]]*\]\]/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Concise label for the grid chip: the bold segment if present, else the text before the
+// first em-dash, capped short.
+function makeTitle(text) {
+  const bold = text.match(/\*\*([^*]+)\*\*/);
+  const base = bold ? bold[1] : text.split(/—|--/)[0] || text;
+  return base
     .replace(/\[\[([^\]|]+)\|?[^\]]*\]\]/g, "$1")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 80);
+    .slice(0, 42);
 }
 
 // Vague / non-event todos to skip entirely (they aren't calendar-worthy).
@@ -50,20 +76,27 @@ for (const line of hub.split("\n")) {
   const open = line.match(/^\s*- \[ \] (.+)$/);
   if (!open) continue;
   const text = open[1];
-  const title = cleanTitle(text.split(/—|--/)[0] || text);
+  const title = makeTitle(text);
   if (SKIP.some((re) => re.test(title))) continue;
 
-  // 1. Explicit "Mon D" dates anywhere in the line
-  for (const m of text.matchAll(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})\b/gi)) {
-    const d = new Date(year, MONTHS[m[1].toLowerCase().slice(0, 3)], Number(m[2]));
-    const date = fmt(d);
-    if (date >= todayStr) {
-      events.push({ date, title });
+  const note = cleanNote(text);
+  const link = extractLink(text);
+  const base = { title, note, link };
+
+  // 1. Explicit "Mon D" dates — one-time events. If any exist, this line is dated, so
+  //    skip weekday recurrence for it entirely.
+  const explicit = [...text.matchAll(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})\b/gi)];
+  if (explicit.length > 0) {
+    for (const m of explicit) {
+      const d = new Date(year, MONTHS[m[1].toLowerCase().slice(0, 3)], Number(m[2]));
+      const date = fmt(d);
+      if (date >= todayStr) events.push({ date, ...base });
     }
+    continue;
   }
 
-  // 2. Weekday recurrences: require a separator-delimited run of weekday names
-  //    ("Sun, Wed, Fri", "Mon/Wed/Fri", "— Monday") so prose mentions don't match.
+  // 2. Weekday recurrences (only when there is NO explicit date): a separator-delimited
+  //    run of weekday names ("Mon, Wed, Fri", "Mon / Wed / Fri", "— Monday").
   const recur = text.match(/(?:—|-)?\s*\b((?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(?:day|sday|nesday|rsday|urday)?(?:\s*[,/]\s*(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(?:day|sday|nesday|rsday|urday)?)*)\b/i);
   if (recur) {
     const days = recur[1]
@@ -71,16 +104,13 @@ for (const line of hub.split("\n")) {
       .split(/[,/]/)
       .map((s) => WEEKDAYS[s.trim()])
       .filter((n) => n !== undefined);
-    // Single weekday mention must be a real schedule marker ("— Monday"), not prose.
     const isSchedule = days.length >= 2 || /(?:—|-)\s*(sun|mon|tue|wed|thu|fri|sat)/i.test(text);
     if (days.length > 0 && isSchedule) {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       for (let day = 1; day <= daysInMonth; day++) {
         const d = new Date(year, month, day);
         const date = fmt(d);
-        if (days.includes(d.getDay()) && date >= todayStr) {
-          events.push({ date, title });
-        }
+        if (days.includes(d.getDay()) && date >= todayStr) events.push({ date, ...base });
       }
     }
   }
@@ -96,8 +126,10 @@ const unique = events.filter((e) => {
 });
 
 console.log(`Parsed ${unique.length} vault events:`);
-for (const e of unique.slice(0, 30)) console.log(` ${e.date}  ${e.title}`);
-if (unique.length > 30) console.log(` … and ${unique.length - 30} more`);
+for (const e of unique.slice(0, 40)) {
+  console.log(` ${e.date}  ${e.title}${e.link ? "  🔗" : ""}`);
+}
+if (unique.length > 40) console.log(` … and ${unique.length - 40} more`);
 
 const client = new ConvexHttpClient(convexUrl);
 const result = await client.mutation(api.dashboard.seedCalendarEvents, { events: unique });
