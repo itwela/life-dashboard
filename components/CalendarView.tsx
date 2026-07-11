@@ -115,12 +115,12 @@ export default function CalendarView({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5"
+      className="fixed inset-0 z-50 flex items-center justify-center p-1.5 sm:p-5"
       style={{ background: isDark ? "rgba(8,8,10,0.85)" : "rgba(240,240,244,0.9)", backdropFilter: "blur(16px)" }}
       onClick={onClose}
     >
       <div
-        className="w-full h-full max-w-[1800px] rounded-[30px] p-6 sm:p-9 flex flex-col overflow-hidden"
+        className="w-full h-full max-w-[1800px] rounded-2xl sm:rounded-[30px] p-3 sm:p-9 flex flex-col overflow-hidden"
         style={{
           background: isDark
             ? "linear-gradient(155deg, rgba(56,189,248,0.13) 0%, rgba(20,20,25,0.99) 40%)"
@@ -133,9 +133,9 @@ export default function CalendarView({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="shrink-0 flex items-center gap-3 mb-5">
+        <div className="shrink-0 flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
+            className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center text-lg sm:text-xl"
             style={{
               background: "linear-gradient(135deg, rgba(56,189,248,0.3), rgba(14,116,180,0.15))",
               border: "1px solid rgba(56,189,248,0.35)",
@@ -144,32 +144,32 @@ export default function CalendarView({
           >
             📅
           </div>
-          <div className="flex-1">
-            <h2 className={`text-2xl font-bold ${textMain}`}>{monthName}</h2>
-            <p className={`text-xs ${text40}`}>Drag todos onto a day · drag events to reschedule · click an event to edit</p>
+          <div className="flex-1 min-w-0">
+            <h2 className={`text-lg sm:text-2xl font-bold truncate ${textMain}`}>{monthName}</h2>
+            <p className={`text-xs hidden sm:block ${text40}`}>Drag todos onto a day · drag events to reschedule · click an event to edit</p>
           </div>
           {onCheckIn && (
             <button
               onClick={() => onCheckIn(selected)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold shrink-0"
               style={{ border: rowBorder, color: mutedText }}
               title="Mood check-in for the selected day"
             >
-              <Smile size={15} /> Check-in
+              <Smile size={15} /> <span className="hidden sm:inline">Check-in</span>
             </button>
           )}
-          <button onClick={() => nav(-1)} className="p-2.5 rounded-xl" style={{ border: rowBorder, color: mutedText }}>
+          <button onClick={() => nav(-1)} className="p-2 sm:p-2.5 rounded-xl shrink-0" style={{ border: rowBorder, color: mutedText }}>
             <ChevronLeft size={17} />
           </button>
-          <button onClick={() => nav(1)} className="p-2.5 rounded-xl" style={{ border: rowBorder, color: mutedText }}>
+          <button onClick={() => nav(1)} className="p-2 sm:p-2.5 rounded-xl shrink-0" style={{ border: rowBorder, color: mutedText }}>
             <ChevronRight size={17} />
           </button>
-          <button onClick={onClose} className="p-2.5 rounded-xl ml-1" style={{ border: rowBorder, color: mutedText }}>
+          <button onClick={onClose} className="p-2 sm:p-2.5 rounded-xl shrink-0" style={{ border: rowBorder, color: mutedText }}>
             <X size={17} />
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 flex gap-5 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 md:gap-5 overflow-y-auto md:overflow-hidden">
           {/* Todo drag source */}
           <div className="w-72 shrink-0 hidden md:flex flex-col">
             <p className={`text-sm font-bold uppercase tracking-wide mb-3 ${text40}`}>Todos — drag onto a day</p>
@@ -195,13 +195,13 @@ export default function CalendarView({
           </div>
 
           {/* Month grid */}
-          <div className="flex-[2] min-w-0 flex flex-col">
+          <div className="md:flex-[2] min-w-0 flex flex-col shrink-0 h-[46vh] md:h-auto">
             <div className="grid grid-cols-7 mb-1.5">
               {WEEKDAYS.map((w) => (
-                <div key={w} className={`text-center text-[11px] font-semibold py-1 ${text40}`}>{w}</div>
+                <div key={w} className={`text-center text-[10px] sm:text-[11px] font-semibold py-1 ${text40}`}>{w}</div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1.5 flex-1 min-h-0 auto-rows-fr">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 flex-1 min-h-0 auto-rows-fr">
               {cells.map((day, i) => {
                 if (day === null) return <div key={i} />;
                 const date = fmt(year, month, day);
@@ -216,7 +216,7 @@ export default function CalendarView({
                     onDragOver={(e) => { e.preventDefault(); if (dragOver !== date) setDragOver(date); }}
                     onDragLeave={() => setDragOver((prev) => (prev === date ? null : prev))}
                     onDrop={() => dropOnDay(date)}
-                    className="rounded-xl p-1.5 text-left flex flex-col overflow-hidden transition-colors cursor-pointer"
+                    className="rounded-lg sm:rounded-xl p-1 sm:p-1.5 text-left flex flex-col overflow-hidden transition-colors cursor-pointer"
                     style={{
                       background: isDragTarget ? `${ACCENT}33` : isSelected ? `${ACCENT}1f` : rowFill,
                       border: isToday
@@ -230,12 +230,25 @@ export default function CalendarView({
                     }}
                   >
                     <span
-                      className="text-[12px] font-bold mb-0.5"
+                      className="text-[11px] sm:text-[12px] font-bold mb-0.5"
                       style={{ color: isToday ? ACCENT : isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.7)" }}
                     >
                       {day}
                     </span>
-                    <div className="flex flex-col gap-0.5 min-h-0 overflow-hidden">
+                    {/* Mobile: compact dots (chips don't fit in small cells) */}
+                    {dayEvents.length > 0 && (
+                      <div className="flex md:hidden flex-wrap gap-0.5 mt-auto">
+                        {dayEvents.slice(0, 4).map((e) => (
+                          <span
+                            key={e._id}
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: e.source === "manual" ? "#34d399" : ACCENT }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {/* Desktop: full text chips */}
+                    <div className="hidden md:flex flex-col gap-0.5 min-h-0 overflow-hidden">
                       {dayEvents.slice(0, 4).map((e) => (
                         <span
                           key={e._id}
@@ -263,9 +276,9 @@ export default function CalendarView({
           </div>
 
           {/* Day panel */}
-          <div className="w-96 shrink-0 flex flex-col">
-            <p className={`text-lg font-bold mb-3 ${textMain}`}>{selectedLabel}</p>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
+          <div className="w-full md:w-96 shrink-0 flex flex-col min-h-0 md:min-h-full">
+            <p className={`text-base sm:text-lg font-bold mb-3 ${textMain}`}>{selectedLabel}</p>
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-2.5 md:pr-1">
               {selectedEvents.length === 0 ? (
                 <p className={`text-base ${text40} py-3`}>Nothing scheduled. Drag a todo here or add one below.</p>
               ) : (

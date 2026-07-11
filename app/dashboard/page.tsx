@@ -114,6 +114,15 @@ export default function DashboardPage() {
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  // The full-view panels zoom 1.25x on desktop for readability, but that overflows a
+  // phone screen — disable it on narrow viewports.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const check = () => setIsNarrow(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const [closeTimer, setCloseTimer] = useState(true);
   const [netWorthHidden, setNetWorthHidden] = useState(true);
 
@@ -836,11 +845,11 @@ export default function DashboardPage() {
             </div>
             <div style={{ width: 92 }} />
           </div>
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "4px 28px 28px", overflowY: "auto" }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto" }}>
             {/* zoom scales the whole panel (rem-based text included) 25% up per Itwela's request.
                 stopPropagation so clicks on the panel don't hit the backdrop's close handler;
                 the blank margins around it (and the header space) still dismiss. */}
-            <div className="modal-panel-in" onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: 1.25 }}>
+            <div className="modal-panel-in" onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25 }}>
               {fullViewSection==="finances" && <FinancesSection isDark={isDark} accounts={accounts} financeFiles={financeFiles} upsertAccount={upsertAccount} generateUploadUrl={generateUploadUrl} saveFinanceFile={saveFinanceFile} deleteFinanceFile={deleteFinanceFile} />}
               {fullViewSection==="school"   && <SchoolSection isDark={isDark} courses={courses} upsertCourse={upsertCourse} schoolProgress={wgu} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
               {fullViewSection==="fitness"  && <WorkoutsSection isDark={isDark} workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
