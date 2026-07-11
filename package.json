@@ -10,6 +10,7 @@
     "setup": "convex dev --once"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.17",
     "convex": "^1.33.0",
     "gsap": "^3.14.2",
     "lucide-react": "^1.17.0",
