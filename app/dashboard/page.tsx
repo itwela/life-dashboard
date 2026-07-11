@@ -514,7 +514,7 @@ export default function DashboardPage() {
           {/* Footer */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", marginTop: "auto" }}>
             <div style={{ fontSize: "0.75rem", color: textMuted, justifySelf: "start", lineHeight: 1.35 }}>
-              <div>{activeBarCount} active days</div>
+              <div>{activeBarCount} act. days</div>
               <div>last 60</div>
             </div>
             {(() => {
