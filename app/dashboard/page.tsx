@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
-  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Play, Eye, EyeOff, ListChecks, Briefcase,
+  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Play, Eye, EyeOff, ListChecks, Briefcase, CalendarDays,
 } from "lucide-react";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
@@ -15,6 +15,7 @@ import ProjectsSection from "./components/ProjectsSection";
 import TodosSection from "./components/TodosSection";
 import AIAssistant from "./components/AIAssistant";
 import CheckInView from "./components/CheckInView";
+import CalendarView from "@/components/CalendarView";
 import { JobLeadsFeed } from "@/components/JobLeadsFeed";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -112,6 +113,7 @@ export default function DashboardPage() {
   const [isDark, setIsDark] = useState(true);
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [closeTimer, setCloseTimer] = useState(true);
   const [netWorthHidden, setNetWorthHidden] = useState(true);
 
@@ -732,11 +734,11 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* ── Components button (fixed bottom-left) ── */}
+      {/* ── Check-In button (fixed top-right) ── */}
       <button
         onClick={() => setShowCheckIn(true)}
         style={{
-          position: "fixed", bottom: 32, left: 32,
+          position: "fixed", top: 32, right: 32,
           width: 44, height: 44, borderRadius: 14,
           border: `1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.6)"}`,
           background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
@@ -753,6 +755,27 @@ export default function DashboardPage() {
         {["c1","c2","c3","c4"].map(s => (
           <Placeholder key={s} seed={s} size={10} />
         ))}
+      </button>
+
+      {/* ── Month calendar button (fixed top-right, next to Check-In) ── */}
+      <button
+        onClick={() => setShowCalendar(true)}
+        style={{
+          position: "fixed", top: 32, right: 88,
+          width: 44, height: 44, borderRadius: 14,
+          border: `1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.6)"}`,
+          background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
+          backdropFilter: "blur(8px)",
+          cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+          zIndex: 40,
+          transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+          color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.7)",
+        }}
+        title="Month calendar"
+      >
+        <CalendarDays size={19} />
       </button>
 
       {/* ── Full-view modal ── */}
@@ -817,6 +840,7 @@ export default function DashboardPage() {
       )}
 
       {showCheckIn && <CheckInView onClose={() => setShowCheckIn(false)} />}
+      {showCalendar && <CalendarView onClose={() => setShowCalendar(false)} isDark={isDark} />}
 
       <AIAssistant />
     </div>

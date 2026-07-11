@@ -121,6 +121,15 @@ export default defineSchema({
     order: v.number(),    // preserves vault ordering
   }).index("by_order", ["order"]),
 
+  // Month calendar: vault-derived events (re-seeded by scripts/sync-calendar.mjs,
+  // which wipes source="vault" rows) plus manual ones added from the UI/agent.
+  calendarEvents: defineTable({
+    date: v.string(), // "YYYY-MM-DD"
+    title: v.string(),
+    source: v.union(v.literal("vault"), v.literal("manual")),
+    note: v.optional(v.string()),
+  }).index("by_date", ["date"]),
+
   checkIns: defineTable({
     date: v.string(), // "YYYY-MM-DD"
     timeOfDay: v.union(v.literal("morning"), v.literal("afternoon"), v.literal("night")),

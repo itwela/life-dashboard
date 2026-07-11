@@ -558,3 +558,46 @@ export const upsertProject = mutation({
     }
   },
 });
+
+// ─── Calendar (vault-derived + manual events) ────────────────────────────────
+
+export const getCalendarEvents = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("calendarEvents").withIndex("by_date").collect();
+  },
+});
+
+export const addCalendarEvent = mutation({
+  args: { date: v.string(), title: v.string(), note: v.optional(v.string()) },
+  handler: async (ctx, { date, title, note }) => {
+    await ctx.db.insert("calendarEvents", { date, title, note, source: "manual" });
+  },
+});
+
+export const deleteCalendarEvent = mutation({
+  args: { id: v.id("calendarEvents") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+
+// Re-seed the vault-derived events (manual ones are left alone). Called by
+// scripts/sync-calendar.mjs after parsing the Obsidian vault.
+export const seedCalendarEvents = mutation({
+  args: {
+    events: v.array(
+      v.object({ date: v.string(), title: v.string(), note: v.optional(v.string()) })
+    ),
+  },
+  handler: async (ctx, { events }) => {
+    const existing = await ctx.db.query("calendarEvents").collect();
+    for (const doc of existing) {
+      if (doc.source === "vault") await ctx.db.delete(doc._id);
+    }
+    for (const e of events) {
+      await ctx.db.insert("calendarEvents", { ...e, source: "vault" });
+    }
+    return { count: events.length };
+  },
+});
