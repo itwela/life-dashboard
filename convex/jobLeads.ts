@@ -11,6 +11,7 @@ export const upsertFromSync = internalMutation({
     status: v.string(),
     isFollowUp: v.optional(v.boolean()),
     emailReceivedAt: v.optional(v.number()),
+    accountEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -31,6 +32,19 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("jobLeads").collect();
+  },
+});
+
+export const deleteBySourceId = internalMutation({
+  args: { sourceLeadId: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("jobLeads")
+      .withIndex("by_source_lead", (q) => q.eq("sourceLeadId", args.sourceLeadId))
+      .first();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
   },
 });
 

@@ -20,6 +20,9 @@ export function JobLeadsFeed() {
         <div key={lead._id} className="flex justify-between gap-3 text-sm border-b py-1">
           <span className="min-w-0 truncate">
             {lead.company} — {lead.role}
+            {lead.accountEmail && (
+              <span className="text-muted-foreground text-xs"> · {lead.accountEmail}</span>
+            )}
           </span>
           <span className="flex items-center gap-3 shrink-0 text-muted-foreground">
             <span>

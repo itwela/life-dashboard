@@ -18,7 +18,23 @@ http.route({
     }
 
     const body = await request.json();
-    const { sourceLeadId, company, role, sourceType, status, isFollowUp, emailReceivedAt } = body;
+    const { action, sourceLeadId, company, role, sourceType, status, isFollowUp, emailReceivedAt, accountEmail } = body;
+
+    // JobKompass sends { action: "delete", sourceLeadId } when a lead is deleted there,
+    // so its mirror row here doesn't linger as an orphan.
+    if (action === "delete") {
+      if (!sourceLeadId) {
+        return new Response(JSON.stringify({ success: false, error: "Missing sourceLeadId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      await ctx.runMutation(internal.jobLeads.deleteBySourceId, { sourceLeadId });
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     if (!sourceLeadId || !company || !role || !sourceType || !status) {
       return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
@@ -35,6 +51,7 @@ http.route({
       status,
       isFollowUp,
       emailReceivedAt: typeof emailReceivedAt === "number" ? emailReceivedAt : undefined,
+      accountEmail: typeof accountEmail === "string" ? accountEmail : undefined,
     });
 
     return new Response(JSON.stringify({ success: true }), {

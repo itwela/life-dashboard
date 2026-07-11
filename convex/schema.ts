@@ -140,6 +140,7 @@ export default defineSchema({
     status: v.string(),
     isFollowUp: v.optional(v.boolean()),
     emailReceivedAt: v.optional(v.number()), // when the email arrived in Gmail
+    accountEmail: v.optional(v.string()), // which connected inbox received it
     updatedAt: v.number(),
   }).index("by_source_lead", ["sourceLeadId"]),
 });
