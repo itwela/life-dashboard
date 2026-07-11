@@ -124,7 +124,7 @@ export default function DashboardPage() {
   const schoolProgress    = useQuery(api.dashboard.getSchoolProgress);
   const books             = useQuery(api.dashboard.getBooks)              ?? [];
   const workouts          = useQuery(api.dashboard.getWorkouts)           ?? [];
-  const workoutSchedule   = useQuery(api.dashboard.getWorkoutSchedule)    ?? [0, 2, 4, 5];
+  const workoutSchedule   = useQuery(api.dashboard.getWorkoutSchedule)    ?? [1, 3, 5];
   const workoutMissedDays = useQuery(api.dashboard.getWorkoutMissedDays)  ?? [];
   const contentPosts      = useQuery(api.dashboard.getContentPosts)       ?? [];
   const projects          = useQuery(api.dashboard.getProjects)           ?? [];
@@ -790,10 +790,13 @@ export default function DashboardPage() {
 
       {/* ── Full-view modal ── */}
       {fullViewSection && (
-        <div className="fullview-backdrop" style={{
-          position: "fixed", inset: 0, zIndex: 50,
-          display: "flex", flexDirection: "column",
-        }}>
+        <div
+          className="fullview-backdrop"
+          onClick={() => setFullViewSection(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 50,
+            display: "flex", flexDirection: "column",
+          }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "0 28px", height: 76, flexShrink: 0,
@@ -834,8 +837,10 @@ export default function DashboardPage() {
             <div style={{ width: 92 }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "4px 28px 28px", overflowY: "auto" }}>
-            {/* zoom scales the whole panel (rem-based text included) 25% up per Itwela's request */}
-            <div className="modal-panel-in" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: 1.25 }}>
+            {/* zoom scales the whole panel (rem-based text included) 25% up per Itwela's request.
+                stopPropagation so clicks on the panel don't hit the backdrop's close handler;
+                the blank margins around it (and the header space) still dismiss. */}
+            <div className="modal-panel-in" onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: 1.25 }}>
               {fullViewSection==="finances" && <FinancesSection isDark={isDark} accounts={accounts} financeFiles={financeFiles} upsertAccount={upsertAccount} generateUploadUrl={generateUploadUrl} saveFinanceFile={saveFinanceFile} deleteFinanceFile={deleteFinanceFile} />}
               {fullViewSection==="school"   && <SchoolSection isDark={isDark} courses={courses} upsertCourse={upsertCourse} schoolProgress={wgu} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
               {fullViewSection==="fitness"  && <WorkoutsSection isDark={isDark} workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
