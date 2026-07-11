@@ -36,10 +36,12 @@ export default function AIAssistant() {
   return (
     <div style={{
       position: "fixed", zIndex: 100,
-      right: 32,
-      bottom: expanded ? 100 : 88,
+      right: 16,
+      bottom: expanded ? 56 : 40,
       width: expanded ? 380 : "auto",
       fontFamily: "var(--font-inter)",
+      transform: "scale(1.25)",
+      transformOrigin: "bottom right",
       transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
     }}>
       {/* Collapsed pill / expanded panel */}

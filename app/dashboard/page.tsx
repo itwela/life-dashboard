@@ -32,16 +32,16 @@ function placeholderColor(seed: string) {
   return PLACEHOLDER_COLORS[idx];
 }
 
-function Placeholder({ seed, size = 40, border }: { seed: string; size?: number; border?: string }) {
+function Placeholder({ seed, size = 40, border, letter: letterOverride, textColor }: { seed: string; size?: number; border?: string; letter?: string; textColor?: string }) {
   const color = placeholderColor(seed);
-  const letter = seed.replace(/[^a-zA-Z]/g, "").charAt(0).toUpperCase() || "·";
+  const letter = letterOverride ?? (seed.replace(/[^a-zA-Z]/g, "").charAt(0).toUpperCase() || "·");
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%", flexShrink: 0,
       background: `linear-gradient(135deg, ${color}22, ${color}10)`,
       border: border ?? `1.5px solid ${color}35`,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.38, fontWeight: 700, color: color,
+      fontSize: size * 0.38, fontWeight: 700, color: textColor ?? color,
       letterSpacing: "-0.01em",
     }}>
       {letter}
@@ -276,7 +276,7 @@ export default function DashboardPage() {
   const textMuted = isDark ? "#b0b0b0" : "#6b7280";
 
   return (
-    <>
+    <div style={{ zoom: 0.75, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
       {/* ── Noise SVG filter ── */}
       <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden>
         <defs>
@@ -301,62 +301,62 @@ export default function DashboardPage() {
       {/* ── Top Navigation ── */}
       <nav style={{
         display: "grid",
-        gridTemplateColumns: "auto auto 1fr",
+        gridTemplateColumns: "1fr auto 1fr",
         gap: 16,
         alignItems: "center",
         marginBottom: 40,
         flexShrink: 0,
       }}>
-        {/* 1. Profile */}
-        <div style={{ flexShrink: 0 }}>
-          <Placeholder seed="you" size={48} border="2px solid rgba(255,255,255,0.6)" />
+        {/* 1. Profile + Toggle (left group) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, justifySelf: "start" }}>
+          <div style={{ flexShrink: 0 }}>
+            <Placeholder seed="you" size={48} border="2px solid rgba(255,255,255,0.6)" letter="I" textColor="#fff" />
+          </div>
+
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.7)"}`,
+            borderRadius: 100, padding: "6px 6px 6px 6px",
+          }}>
+            {/* Mode switch */}
+            <button
+              onClick={() => setIsDark(d => !d)}
+              style={{
+                width: 88, height: 48, borderRadius: 100, border: "none",
+                background: "#fff", cursor: "pointer", position: "relative",
+                flexShrink: 0, padding: 4,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+              }}
+              aria-label="Toggle dark mode"
+            >
+              {/* Track */}
+              <div style={{
+                position: "absolute", inset: 4,
+                background: "#3b82f6", borderRadius: 100,
+                transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+              }} />
+              {/* Handle */}
+              <div style={{
+                position: "absolute", top: "50%", left: 4,
+                width: 32, height: 32, borderRadius: "50%", background: "#fff",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                transform: `translate(${isDark ? "0px" : "48px"}, -50%)`,
+                transition: "transform 0.4s cubic-bezier(0.4,0,0.2,1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, zIndex: 1,
+              }}>
+                {isDark ? "☾" : "☀"}
+              </div>
+            </button>
+          </div>
         </div>
 
-        {/* 2. Toggle container */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.7)"}`,
-          borderRadius: 100, padding: "6px 6px 6px 6px",
-        }}>
-          {/* Mode switch */}
-          <button
-            onClick={() => setIsDark(d => !d)}
-            style={{
-              width: 88, height: 48, borderRadius: 100, border: "none",
-              background: "#fff", cursor: "pointer", position: "relative",
-              flexShrink: 0, padding: 4,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
-            }}
-            aria-label="Toggle dark mode"
-          >
-            {/* Track */}
-            <div style={{
-              position: "absolute", inset: 4,
-              background: "#3b82f6", borderRadius: 100,
-              transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
-            }} />
-            {/* Handle */}
-            <div style={{
-              position: "absolute", top: "50%", left: 4,
-              width: 32, height: 32, borderRadius: "50%", background: "#fff",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-              transform: `translate(${isDark ? "0px" : "48px"}, -50%)`,
-              transition: "transform 0.4s cubic-bezier(0.4,0,0.2,1)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, zIndex: 1,
-            }}>
-              {isDark ? "☾" : "☀"}
-            </div>
-          </button>
-        </div>
-
-        {/* 3. Meeting alert / date pill */}
+        {/* 2. Meeting alert / date pill (true-centered against the whole nav) */}
         <div className="meeting-alert" style={{
-          justifySelf: "center",
           display: "flex", alignItems: "center", gap: 12,
           background: isDark ? "rgba(30,30,30,0.9)" : "#fff",
           borderRadius: 100, padding: "6px 6px 6px 16px",
@@ -405,13 +405,15 @@ export default function DashboardPage() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(4, 1fr)",
-          gridTemplateRows: "1fr 1fr 1fr",
+          gridAutoRows: "minmax(240px, 1fr)",
+          alignContent: "start",
           gap: 24,
           maxWidth: 1400,
           width: "100%",
           margin: "0 auto",
           flex: 1,
           minHeight: 0,
+          overflowY: "auto",
         }}
       >
 
@@ -816,6 +818,6 @@ export default function DashboardPage() {
       {showCheckIn && <CheckInView onClose={() => setShowCheckIn(false)} />}
 
       <AIAssistant />
-    </>
+    </div>
   );
 }
