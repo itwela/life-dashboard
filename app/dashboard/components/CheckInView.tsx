@@ -217,16 +217,20 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 50,
-      display: "flex", flexDirection: "column",
-      background: "rgba(0,0,0,0.35)",
-      backdropFilter: "blur(2px)",
-      WebkitBackdropFilter: "blur(2px)",
-      fontFamily: "var(--font-inter)",
-    }}>
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 50,
+        display: "flex", flexDirection: "column",
+        background: "rgba(0,0,0,0.35)",
+        backdropFilter: "blur(2px)",
+        WebkitBackdropFilter: "blur(2px)",
+        fontFamily: "var(--font-inter)",
+      }}>
       {/* Inner panel */}
-      <div style={{
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
         position: "absolute", inset: "20px",
         borderRadius: 32, overflow: "hidden",
         display: "flex", flexDirection: "column",
