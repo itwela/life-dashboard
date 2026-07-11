@@ -48,7 +48,7 @@ export default function ReadingSection({ books, upsertBook, isDark = true }: Pro
 
   return (
     <div
-      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
+      className="md:h-full rounded-[28px] p-4 sm:p-8 flex flex-col md:overflow-hidden relative"
       style={{
         background: isDark
           ? "linear-gradient(155deg, rgba(192,132,252,0.14) 0%, rgba(22,22,27,0.99) 42%)"
@@ -107,7 +107,7 @@ export default function ReadingSection({ books, upsertBook, isDark = true }: Pro
                 Pick up a book. A wealthy mind reads.
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-2 pr-1">
                 {reading.map((b) => (
                   <div key={b._id} className="rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:scale-[1.01] transition-transform"
                     style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.25)", boxShadow: "0 0 16px rgba(192,132,252,0.1)" }}
@@ -130,7 +130,7 @@ export default function ReadingSection({ books, upsertBook, isDark = true }: Pro
           {queue.length > 0 && (
             <div className="flex flex-col min-h-0" style={{ flex: queue.length }}>
               <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Up Next</p>
-              <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+              <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-1.5 pr-1">
                 {queue.map((b) => (
                   <div key={b._id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${hoverRow} transition-colors`} onClick={() => openEdit(b)}>
                     <span className={`text-sm ${text30}`}>○</span>
@@ -147,7 +147,7 @@ export default function ReadingSection({ books, upsertBook, isDark = true }: Pro
           {completed.length > 0 && (
             <div className="flex flex-col min-h-0" style={{ flex: completed.length }}>
               <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Completed ({completed.length})</p>
-              <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+              <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-1.5 pr-1">
                 {completed.map((b) => (
                   <div key={b._id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${hoverRow} transition-colors`} onClick={() => openEdit(b)}>
                     <span className="text-sm text-green-400">✓</span>

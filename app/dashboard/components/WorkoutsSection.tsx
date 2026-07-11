@@ -209,7 +209,7 @@ export default function WorkoutsSection({
 
   return (
     <div
-      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
+      className="md:h-full rounded-[28px] p-4 sm:p-8 flex flex-col md:overflow-hidden relative"
       style={{
         background: isDark
           ? "linear-gradient(155deg, rgba(251,146,60,0.14) 0%, rgba(22,22,27,0.99) 42%)"
@@ -299,7 +299,7 @@ export default function WorkoutsSection({
           {/* Quick Done / Missed for each scheduled day — scrollable */}
           <div className="flex-1 min-h-0 flex flex-col">
             <p className={`text-xs ${text40} uppercase tracking-wider mb-2 shrink-0`}>Quick mark</p>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-2 pr-1">
               {scheduledRows.map(({ date, label }) => {
                 const ts = date.getTime();
                 const done = workedOutDays.has(ts);
@@ -364,7 +364,7 @@ export default function WorkoutsSection({
               <p className={`text-sm ${text25} text-center`}>No workouts logged yet.</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-2 pr-1">
               {workouts.map((w) => {
                 const d = new Date(w.date);
                 return (

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
-  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Play, Eye, EyeOff, ListChecks, Briefcase, CalendarDays,
+  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Eye, EyeOff, ListChecks, Briefcase, CalendarDays,
 } from "lucide-react";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
@@ -516,17 +516,23 @@ export default function DashboardPage() {
             <div style={{ fontSize: "0.75rem", color: textMuted }}>
               {activeBarCount} active days · last 60
             </div>
-            <div style={{
-              width: 54, height: 54, borderRadius: "50%",
-              background: "rgba(245,245,245,0.85)",
-              border: "1px solid rgba(0,0,0,0.06)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            }}
-              onClick={(e) => { e.stopPropagation(); setFullViewSection("fitness"); }}
-            >
-              <Play size={20} color="#000" fill="#000" />
-            </div>
+            {(() => {
+              const todayDone = workedOutDays.has(todayStart.getTime());
+              const todayScheduled = workoutSchedule.includes(new Date().getDay());
+              const label = todayDone ? "Done today" : todayScheduled ? "Workout day" : "Rest day";
+              const color = todayDone ? "#16a34a" : todayScheduled ? "#d97706" : (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)");
+              return (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", borderRadius: 100,
+                  background: todayDone ? "rgba(22,163,74,0.12)" : todayScheduled ? "rgba(217,119,6,0.12)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"),
+                  border: `1px solid ${color}33`,
+                }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: color }} />
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color }}>{label}</span>
+                </div>
+              );
+            })()}
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "1.1rem", fontWeight: 600, color: textMain }}>{streak}d</div>
               <div style={{ fontSize: "0.7rem", color: textMuted }}>streak</div>

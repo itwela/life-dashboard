@@ -146,7 +146,7 @@ export default function FinancesSection({
 
   return (
     <div
-      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
+      className="md:h-full rounded-[28px] p-4 sm:p-8 flex flex-col md:overflow-hidden relative"
       style={{
         background: isDark
           ? "linear-gradient(155deg, rgba(74,222,128,0.14) 0%, rgba(22,22,27,0.99) 42%)"
@@ -236,7 +236,7 @@ export default function FinancesSection({
             {accounts.length === 0 ? (
               <p className={`text-sm ${text25} text-center py-4`}>No accounts yet.</p>
             ) : (
-              <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 content-start pr-1">
+              <div className="md:flex-1 md:min-h-0 md:overflow-y-auto grid grid-cols-2 gap-2 content-start pr-1">
                 {accounts.map((a) => (
                   <div
                     key={a._id}
@@ -305,7 +305,7 @@ export default function FinancesSection({
               <p className={`text-sm ${text25} text-center`}>No files yet. Add a credit report or other doc.</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-1.5 pr-1">
               {financeFiles.map((f) => (
                 <div
                   key={f._id}

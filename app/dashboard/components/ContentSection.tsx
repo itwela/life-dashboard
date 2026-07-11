@@ -133,7 +133,7 @@ export default function ContentSection({ posts, addContentPost, updateContentPos
 
   return (
     <div
-      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
+      className="md:h-full rounded-[28px] p-4 sm:p-8 flex flex-col md:overflow-hidden relative"
       style={{
         background: isDark
           ? "linear-gradient(155deg, rgba(34,211,238,0.14) 0%, rgba(22,22,27,0.99) 42%)"
@@ -193,7 +193,7 @@ export default function ContentSection({ posts, addContentPost, updateContentPos
               <p className={`text-sm ${text25} text-center`}>No content yet. Start with an idea.</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-2 pr-1">
               {recent.map((p) => {
                 const sm     = statusColors[p.status];
                 const icon   = typeIcons[p.type];
@@ -278,7 +278,7 @@ export default function ContentSection({ posts, addContentPost, updateContentPos
             </div>
 
             {/* Plan body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto px-6 py-5">
               {viewingPost.notes ? (
                 <div className="space-y-1">
                   {viewingPost.notes.split("\n").map((line, i) => {

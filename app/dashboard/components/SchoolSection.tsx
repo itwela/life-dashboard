@@ -129,7 +129,7 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
 
   return (
     <div
-      className="h-full rounded-[28px] p-6 sm:p-8 flex flex-col overflow-hidden relative"
+      className="md:h-full rounded-[28px] p-4 sm:p-8 flex flex-col md:overflow-hidden relative"
       style={{
         background: isDark
           ? "linear-gradient(155deg, rgba(96,165,250,0.14) 0%, rgba(22,22,27,0.99) 42%)"
@@ -254,7 +254,7 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
               <p className={`text-sm ${text30} text-center`}>No courses yet.</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+            <div className="md:flex-1 md:min-h-0 md:overflow-y-auto space-y-1.5 pr-1">
               {[...courses]
                 .sort((a, b) => {
                   const order = { in_progress: 0, completed: 1, not_started: 2 };
