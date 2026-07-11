@@ -10,6 +10,7 @@ export const upsertFromSync = internalMutation({
     sourceType: v.union(v.literal("personal_outreach"), v.literal("digest_listing")),
     status: v.string(),
     isFollowUp: v.optional(v.boolean()),
+    emailReceivedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -30,5 +31,20 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("jobLeads").collect();
+  },
+});
+
+// Wipe the mirror. This table is a disposable read-only copy of JobKompass leads:
+// after JobKompass deletes leads (e.g. resetUntriagedLeads), their mirror rows here
+// become orphans. Run this, then `npx convex run emailAgent/mirror:pushAllLeads` on
+// the JobKompass deployment to repopulate.
+export const purgeAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("jobLeads").collect();
+    for (const row of rows) {
+      await ctx.db.delete(row._id);
+    }
+    return { deleted: rows.length };
   },
 });

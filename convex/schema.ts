@@ -139,6 +139,7 @@ export default defineSchema({
     sourceType: v.union(v.literal("personal_outreach"), v.literal("digest_listing")),
     status: v.string(),
     isFollowUp: v.optional(v.boolean()),
+    emailReceivedAt: v.optional(v.number()), // when the email arrived in Gmail
     updatedAt: v.number(),
   }).index("by_source_lead", ["sourceLeadId"]),
 });

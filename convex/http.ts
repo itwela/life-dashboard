@@ -18,7 +18,7 @@ http.route({
     }
 
     const body = await request.json();
-    const { sourceLeadId, company, role, sourceType, status, isFollowUp } = body;
+    const { sourceLeadId, company, role, sourceType, status, isFollowUp, emailReceivedAt } = body;
 
     if (!sourceLeadId || !company || !role || !sourceType || !status) {
       return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
@@ -34,6 +34,7 @@ http.route({
       sourceType,
       status,
       isFollowUp,
+      emailReceivedAt: typeof emailReceivedAt === "number" ? emailReceivedAt : undefined,
     });
 
     return new Response(JSON.stringify({ success: true }), {
