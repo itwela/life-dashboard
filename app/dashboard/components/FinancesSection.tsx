@@ -192,7 +192,7 @@ export default function FinancesSection({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:flex-1 md:min-h-0">
         <div className="flex flex-col gap-3 min-h-0">
           <div
             className="rounded-xl p-4 text-center shrink-0"

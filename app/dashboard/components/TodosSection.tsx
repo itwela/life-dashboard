@@ -229,7 +229,7 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
                         >
                           {t.done ? "✓" : ""}
                         </span>
-                        <span className={`text-sm leading-snug ${t.done ? `${text30} line-through` : isDark ? "text-white/80" : "text-black/80"}`}>
+                        <span className={`text-sm leading-snug min-w-0 flex-1 break-words ${t.done ? `${text30} line-through` : isDark ? "text-white/80" : "text-black/80"}`}>
                           {t.text}
                         </span>
                       </div>

@@ -845,7 +845,7 @@ export default function DashboardPage() {
             </div>
             <div style={{ width: 92 }} />
           </div>
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto" }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto", overflowX: "hidden" }}>
             {/* zoom scales the whole panel (rem-based text included) 25% up per Itwela's request.
                 stopPropagation so clicks on the panel don't hit the backdrop's close handler;
                 the blank margins around it (and the header space) still dismiss. */}

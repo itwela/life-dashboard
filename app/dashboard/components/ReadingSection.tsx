@@ -80,7 +80,7 @@ export default function ReadingSection({ books, upsertBook, isDark = true }: Pro
       </div>
 
       {/* 2-col layout */}
-      <div className="flex-1 min-h-0 grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:flex-1 md:min-h-0">
 
         {/* Left: stats + currently reading */}
         <div className="flex flex-col gap-4">
