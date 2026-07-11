@@ -810,7 +810,7 @@ export default function DashboardPage() {
               {fullViewSection==="projects" && <ProjectsSection isDark={isDark} projects={projects} upsertProject={upsertProject} />}
               {fullViewSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
               {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} reorderTodos={reorderTodos} />}
-              {fullViewSection==="leads"    && <JobLeadsFeed />}
+              {fullViewSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
             </div>
           </div>
         </div>
