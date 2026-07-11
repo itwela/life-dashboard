@@ -111,12 +111,12 @@ export default function CalendarView({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5"
       style={{ background: isDark ? "rgba(8,8,10,0.85)" : "rgba(240,240,244,0.9)", backdropFilter: "blur(16px)" }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-6xl h-[92vh] rounded-[30px] p-6 sm:p-9 flex flex-col overflow-hidden"
+        className="w-full h-full max-w-[1800px] rounded-[30px] p-6 sm:p-9 flex flex-col overflow-hidden"
         style={{
           background: isDark
             ? "linear-gradient(155deg, rgba(56,189,248,0.13) 0%, rgba(20,20,25,0.99) 40%)"
