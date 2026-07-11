@@ -513,8 +513,9 @@ export default function DashboardPage() {
           </div>
           {/* Footer */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", marginTop: "auto" }}>
-            <div style={{ fontSize: "0.75rem", color: textMuted, justifySelf: "start" }}>
-              {activeBarCount} active days · last 60
+            <div style={{ fontSize: "0.75rem", color: textMuted, justifySelf: "start", lineHeight: 1.35 }}>
+              <div>{activeBarCount} active days</div>
+              <div>last 60</div>
             </div>
             {(() => {
               const todayDone = workedOutDays.has(todayStart.getTime());
