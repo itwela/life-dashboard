@@ -12,7 +12,7 @@ export default function Page() {
         background: "radial-gradient(1200px 600px at 50% -10%, rgba(56,189,248,0.10), transparent), #0a0a0d",
       }}
     >
-      <SignUp />
+      <SignUp fallbackRedirectUrl="/dashboard" forceRedirectUrl="/dashboard" />
     </div>
   );
 }
