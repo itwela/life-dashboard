@@ -512,8 +512,8 @@ export default function DashboardPage() {
             ))}
           </div>
           {/* Footer */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
-            <div style={{ fontSize: "0.75rem", color: textMuted }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", marginTop: "auto" }}>
+            <div style={{ fontSize: "0.75rem", color: textMuted, justifySelf: "start" }}>
               {activeBarCount} active days · last 60
             </div>
             {(() => {
@@ -523,6 +523,7 @@ export default function DashboardPage() {
               const color = todayDone ? "#16a34a" : todayScheduled ? "#d97706" : (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)");
               return (
                 <div style={{
+                  justifySelf: "center",
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "6px 12px", borderRadius: 100,
                   background: todayDone ? "rgba(22,163,74,0.12)" : todayScheduled ? "rgba(217,119,6,0.12)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"),
@@ -533,7 +534,7 @@ export default function DashboardPage() {
                 </div>
               );
             })()}
-            <div style={{ textAlign: "right" }}>
+            <div style={{ textAlign: "right", justifySelf: "end" }}>
               <div style={{ fontSize: "1.1rem", fontWeight: 600, color: textMain }}>{streak}d</div>
               <div style={{ fontSize: "0.7rem", color: textMuted }}>streak</div>
             </div>
