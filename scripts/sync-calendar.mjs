@@ -40,6 +40,9 @@ function cleanTitle(raw) {
     .slice(0, 80);
 }
 
+// Vague / non-event todos to skip entirely (they aren't calendar-worthy).
+const SKIP = [/^career move/i];
+
 const hub = readFileSync(HUB_PATH, "utf8");
 const events = [];
 
@@ -48,6 +51,7 @@ for (const line of hub.split("\n")) {
   if (!open) continue;
   const text = open[1];
   const title = cleanTitle(text.split(/—|--/)[0] || text);
+  if (SKIP.some((re) => re.test(title))) continue;
 
   // 1. Explicit "Mon D" dates anywhere in the line
   for (const m of text.matchAll(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})\b/gi)) {

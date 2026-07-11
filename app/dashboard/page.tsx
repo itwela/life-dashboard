@@ -177,9 +177,24 @@ export default function DashboardPage() {
   const wguCuLeft           = wgu.totalCU - earnedCU;
 
   const todayStart = useMemo(() => { const d=new Date(); d.setHours(0,0,0,0); return d; }, []);
-  const workedOutDays = useMemo(() => new Set(
-    workouts.map(w=>{ const d=new Date(w.date); d.setHours(0,0,0,0); return d.getTime(); })
-  ), [workouts]);
+
+  // Workout days come from FuelLog (where Itwela actually logs sessions) merged with any
+  // locally-logged dashboard workouts. FuelLog is fetched once on mount via a server-side
+  // action so the API key stays off the client.
+  const getFuelWorkoutDays = useAction(api.fuel.getWorkoutDays);
+  const [fuelWorkoutDays, setFuelWorkoutDays] = useState<string[]>([]);
+  useEffect(() => {
+    getFuelWorkoutDays({})
+      .then((r) => setFuelWorkoutDays(r.days))
+      .catch(() => setFuelWorkoutDays([]));
+  }, [getFuelWorkoutDays]);
+
+  const workedOutDays = useMemo(() => {
+    const set = new Set<number>();
+    for (const w of workouts) { const d=new Date(w.date); d.setHours(0,0,0,0); set.add(d.getTime()); }
+    for (const iso of fuelWorkoutDays) { const d=new Date(iso+"T12:00:00"); d.setHours(0,0,0,0); set.add(d.getTime()); }
+    return set;
+  }, [workouts, fuelWorkoutDays]);
 
   let streak = 0;
   for (let i=0; i<365; i++) {
@@ -200,6 +215,13 @@ export default function DashboardPage() {
 
   const sortedJobLeads    = [...jobLeads].sort((a, b) => b.updatedAt - a.updatedAt);
   const mostRecentLead    = sortedJobLeads[0];
+  const RECENT_MS         = 14 * 24 * 60 * 60 * 1000;
+  const recentSentLeads   = jobLeads.filter(
+    (l) => (l.status === "sent" || l.status === "followed_up") && Date.now() - l.updatedAt < RECENT_MS
+  ).length;
+  const recentRepliedLeads = jobLeads.filter(
+    (l) => l.status === "replied" && Date.now() - l.updatedAt < RECENT_MS
+  ).length;
 
   const activeBarCount = bars60.filter(b=>b.active).length;
 
@@ -707,12 +729,22 @@ export default function DashboardPage() {
             icon={<Briefcase size={20} color={isDark ? "#fff" : "#1a1a1a"} />}
             isDark={isDark}
           />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
             <div style={{ fontSize: "2.4rem", fontWeight: 700, color: textMain, letterSpacing: "-0.05em", lineHeight: 1 }}>
               {jobLeads.length}
             </div>
-            <div style={{ fontSize: "0.8rem", color: textMuted }}>
-              {mostRecentLead ? `${mostRecentLead.company} · ${mostRecentLead.status}` : "No leads yet"}
+            <div style={{ display: "flex", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#34d399", lineHeight: 1 }}>{recentSentLeads}</div>
+                <div style={{ fontSize: "0.68rem", color: textMuted }}>sent · 14d</div>
+              </div>
+              <div>
+                <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#a78bfa", lineHeight: 1 }}>{recentRepliedLeads}</div>
+                <div style={{ fontSize: "0.68rem", color: textMuted }}>replied · 14d</div>
+              </div>
+            </div>
+            <div style={{ fontSize: "0.75rem", color: textMuted }}>
+              {mostRecentLead ? `Latest: ${mostRecentLead.company}` : "No leads yet"}
             </div>
           </div>
           <CardFooter count={jobLeads.length || "—"} label="total leads" isDark={isDark} />
@@ -734,34 +766,12 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* ── Check-In button (fixed top-right) ── */}
-      <button
-        onClick={() => setShowCheckIn(true)}
-        style={{
-          position: "fixed", top: 32, right: 32,
-          width: 44, height: 44, borderRadius: 14,
-          border: `1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.6)"}`,
-          background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
-          backdropFilter: "blur(8px)",
-          cursor: "pointer",
-          display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 3,
-          padding: 10,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-          zIndex: 40,
-          transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-        title="Check-In"
-      >
-        {["c1","c2","c3","c4"].map(s => (
-          <Placeholder key={s} seed={s} size={10} />
-        ))}
-      </button>
-
-      {/* ── Month calendar button (fixed top-right, next to Check-In) ── */}
+      {/* ── Calendar button (fixed top-right) — single entry point; mood Check-In
+             lives inside the calendar's day panel now ── */}
       <button
         onClick={() => setShowCalendar(true)}
         style={{
-          position: "fixed", top: 32, right: 88,
+          position: "fixed", top: 32, right: 32,
           width: 44, height: 44, borderRadius: 14,
           border: `1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.6)"}`,
           background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
@@ -773,7 +783,7 @@ export default function DashboardPage() {
           transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
           color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.7)",
         }}
-        title="Month calendar"
+        title="Calendar & check-in"
       >
         <CalendarDays size={19} />
       </button>
@@ -840,7 +850,13 @@ export default function DashboardPage() {
       )}
 
       {showCheckIn && <CheckInView onClose={() => setShowCheckIn(false)} />}
-      {showCalendar && <CalendarView onClose={() => setShowCalendar(false)} isDark={isDark} />}
+      {showCalendar && (
+        <CalendarView
+          onClose={() => setShowCalendar(false)}
+          isDark={isDark}
+          onCheckIn={() => { setShowCalendar(false); setShowCheckIn(true); }}
+        />
+      )}
 
       <AIAssistant />
     </div>

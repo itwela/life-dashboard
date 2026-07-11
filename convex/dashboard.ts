@@ -582,6 +582,24 @@ export const deleteCalendarEvent = mutation({
   },
 });
 
+// Edit an event: change its day (drag-drop reschedule) and/or its text. A vault-derived
+// event that gets edited becomes "manual" so the next sync doesn't wipe the change.
+export const updateCalendarEvent = mutation({
+  args: {
+    id: v.id("calendarEvents"),
+    date: v.optional(v.string()),
+    title: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, date, title, note }) => {
+    const patch: Record<string, unknown> = { source: "manual" };
+    if (date !== undefined) patch.date = date;
+    if (title !== undefined) patch.title = title;
+    if (note !== undefined) patch.note = note;
+    await ctx.db.patch(id, patch);
+  },
+});
+
 // Re-seed the vault-derived events (manual ones are left alone). Called by
 // scripts/sync-calendar.mjs after parsing the Obsidian vault.
 export const seedCalendarEvents = mutation({
