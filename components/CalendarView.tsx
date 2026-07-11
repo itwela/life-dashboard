@@ -167,11 +167,11 @@ export default function CalendarView({
 
         <div className="flex-1 min-h-0 flex gap-5 overflow-hidden">
           {/* Todo drag source */}
-          <div className="w-64 shrink-0 hidden md:flex flex-col">
-            <p className={`text-xs font-bold uppercase tracking-wide mb-2.5 ${text40}`}>Todos — drag onto a day</p>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+          <div className="w-72 shrink-0 hidden md:flex flex-col">
+            <p className={`text-sm font-bold uppercase tracking-wide mb-3 ${text40}`}>Todos — drag onto a day</p>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
               {openTodos.length === 0 ? (
-                <p className={`text-sm ${text40}`}>No open todos.</p>
+                <p className={`text-base ${text40}`}>No open todos.</p>
               ) : (
                 openTodos.map((t) => (
                   <div
@@ -179,8 +179,8 @@ export default function CalendarView({
                     draggable
                     onDragStart={() => setDrag({ kind: "todo", title: t.text })}
                     onDragEnd={() => { setDrag(null); setDragOver(null); }}
-                    className="px-3.5 py-3 rounded-xl text-sm leading-snug cursor-grab active:cursor-grabbing"
-                    style={{ background: rowFill, border: rowBorder, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.78)" }}
+                    className="px-4 py-3.5 rounded-xl text-base leading-snug cursor-grab active:cursor-grabbing"
+                    style={{ background: rowFill, border: rowBorder, color: isDark ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.8)" }}
                     title={t.text}
                   >
                     <span className="line-clamp-2">{t.text}</span>
@@ -259,20 +259,20 @@ export default function CalendarView({
           </div>
 
           {/* Day panel */}
-          <div className="w-80 shrink-0 flex flex-col">
-            <p className={`text-base font-bold mb-3 ${textMain}`}>{selectedLabel}</p>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
+          <div className="w-96 shrink-0 flex flex-col">
+            <p className={`text-lg font-bold mb-3 ${textMain}`}>{selectedLabel}</p>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
               {selectedEvents.length === 0 ? (
-                <p className={`text-sm ${text40} py-3`}>Nothing scheduled. Drag a todo here or add one below.</p>
+                <p className={`text-base ${text40} py-3`}>Nothing scheduled. Drag a todo here or add one below.</p>
               ) : (
                 selectedEvents.map((e) => (
                   <div
                     key={e._id}
-                    className="group flex items-start gap-2.5 px-4 py-3 rounded-xl"
+                    className="group flex items-start gap-3 px-4 py-3.5 rounded-xl"
                     style={{ background: rowFill, border: rowBorder }}
                   >
                     <span
-                      className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0"
+                      className="mt-1.5 w-3 h-3 rounded-full shrink-0"
                       style={{ background: e.source === "manual" ? "#34d399" : ACCENT }}
                     />
                     <div className="min-w-0 flex-1">
@@ -291,15 +291,15 @@ export default function CalendarView({
                         />
                       ) : (
                         <p
-                          className={`text-sm font-medium leading-snug cursor-text ${textMain}`}
+                          className={`text-base font-medium leading-snug cursor-text ${textMain}`}
                           onClick={() => { setEditingId(e._id); setEditText(e.title); }}
                           title="Click to edit"
                         >
                           {e.title}
                         </p>
                       )}
-                      {e.note && <p className={`text-xs mt-0.5 ${text40}`}>{e.note}</p>}
-                      <p className={`text-[10px] uppercase tracking-wide mt-0.5 ${text40}`}>
+                      {e.note && <p className={`text-sm mt-0.5 ${text40}`}>{e.note}</p>}
+                      <p className={`text-[11px] uppercase tracking-wide mt-1 ${text40}`}>
                         {e.source === "manual" ? "added" : "from vault"}
                       </p>
                     </div>
@@ -327,11 +327,11 @@ export default function CalendarView({
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") submitNew(); }}
                 placeholder="Add to this day…"
-                className={`flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-sm outline-none ${textMain}`}
+                className={`flex-1 min-w-0 px-4 py-3 rounded-xl text-base outline-none ${textMain}`}
                 style={{ background: rowFill, border: rowBorder }}
               />
-              <button onClick={submitNew} className="px-3.5 rounded-xl flex items-center justify-center" style={{ background: ACCENT, color: "#fff" }}>
-                <Plus size={17} />
+              <button onClick={submitNew} className="px-4 rounded-xl flex items-center justify-center" style={{ background: ACCENT, color: "#fff" }}>
+                <Plus size={19} />
               </button>
             </div>
             <p className={`text-[11px] mt-2 ${text60}`}>
