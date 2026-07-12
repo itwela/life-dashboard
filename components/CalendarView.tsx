@@ -32,6 +32,7 @@ export default function CalendarView({
   const addEvent = useMutation(api.dashboard.addCalendarEvent);
   const deleteEvent = useMutation(api.dashboard.deleteCalendarEvent);
   const updateEvent = useMutation(api.dashboard.updateCalendarEvent);
+  const setDone = useMutation(api.dashboard.setCalendarEventDone);
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -258,12 +259,13 @@ export default function CalendarView({
                           onDragEnd={() => { setDrag(null); setDragOver(null); }}
                           className="text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-grab active:cursor-grabbing"
                           style={{
-                            background: e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
-                            color: e.source === "manual" ? "#34d399" : ACCENT,
+                            background: e.done ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)") : e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
+                            color: e.done ? (isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)") : e.source === "manual" ? "#34d399" : ACCENT,
+                            textDecoration: e.done ? "line-through" : undefined,
                           }}
                           title={e.note || e.title}
                         >
-                          {e.link ? "🔗 " : ""}{e.title}
+                          {e.done ? "✓ " : e.link ? "🔗 " : ""}{e.title}
                         </span>
                       ))}
                       {dayEvents.length > 4 && (
@@ -287,12 +289,20 @@ export default function CalendarView({
                   <div
                     key={e._id}
                     className="group flex items-start gap-3 px-4 py-3.5 rounded-xl"
-                    style={{ background: rowFill, border: rowBorder }}
+                    style={{ background: rowFill, border: rowBorder, opacity: e.done ? 0.6 : 1 }}
                   >
-                    <span
-                      className="mt-1.5 w-3 h-3 rounded-full shrink-0"
-                      style={{ background: e.source === "manual" ? "#34d399" : ACCENT }}
-                    />
+                    <button
+                      className="mt-0.5 w-5 h-5 rounded-md shrink-0 flex items-center justify-center transition-colors"
+                      title={e.done ? "Mark not done" : "Mark done"}
+                      onClick={() => setDone({ id: e._id, done: !e.done })}
+                      style={{
+                        background: e.done ? "#34d399" : "transparent",
+                        border: `1.5px solid ${e.done ? "#34d399" : (isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)")}`,
+                        color: "#fff",
+                      }}
+                    >
+                      {e.done ? <Check size={13} /> : null}
+                    </button>
                     <div className="min-w-0 flex-1">
                       {editingId === e._id ? (
                         <input
@@ -312,6 +322,7 @@ export default function CalendarView({
                           className={`text-base font-medium leading-snug cursor-text ${textMain}`}
                           onClick={() => { setEditingId(e._id); setEditText(e.title); }}
                           title="Click to edit"
+                          style={{ textDecoration: e.done ? "line-through" : undefined }}
                         >
                           {e.title}
                         </p>

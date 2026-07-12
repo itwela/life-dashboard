@@ -582,6 +582,14 @@ export const deleteCalendarEvent = mutation({
   },
 });
 
+// Mark an event done/undone. It stays on the calendar (struck through) either way.
+export const setCalendarEventDone = mutation({
+  args: { id: v.id("calendarEvents"), done: v.boolean() },
+  handler: async (ctx, { id, done }) => {
+    await ctx.db.patch(id, { done });
+  },
+});
+
 // Edit an event: change its day (drag-drop reschedule) and/or its text. A vault-derived
 // event that gets edited becomes "manual" so the next sync doesn't wipe the change.
 export const updateCalendarEvent = mutation({
@@ -617,11 +625,17 @@ export const seedCalendarEvents = mutation({
   },
   handler: async (ctx, { events }) => {
     const existing = await ctx.db.query("calendarEvents").collect();
+    // Preserve done state across re-sync: a recurring vault event you marked done on a
+    // given day should stay done after the next sync, without being duplicated.
+    const doneKeys = new Set(
+      existing.filter((e) => e.source === "vault" && e.done).map((e) => `${e.date}|${e.title}`)
+    );
     for (const doc of existing) {
       if (doc.source === "vault") await ctx.db.delete(doc._id);
     }
     for (const e of events) {
-      await ctx.db.insert("calendarEvents", { ...e, source: "vault" });
+      const done = doneKeys.has(`${e.date}|${e.title}`) || undefined;
+      await ctx.db.insert("calendarEvents", { ...e, source: "vault", done });
     }
     return { count: events.length };
   },
