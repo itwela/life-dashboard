@@ -130,6 +130,7 @@ export default defineSchema({
     note: v.optional(v.string()), // full detail (time, who, confirmation #, etc.)
     link: v.optional(v.string()), // associated URL (Zoom, portal, scholarship page…)
     done: v.optional(v.boolean()), // completed — stays on the calendar, struck through
+    status: v.optional(v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done"))), // 3-state; falls back to `done`
   }).index("by_date", ["date"]),
 
   checkIns: defineTable({

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { X, ChevronLeft, ChevronRight, Plus, Trash2, Check, Smile, ExternalLink } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Plus, Trash2, Check, Smile, ExternalLink, Minus } from "lucide-react";
 
 const ACCENT = "#38bdf8";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -13,6 +13,13 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function fmt(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
+
+type EvStatus = "todo" | "in_progress" | "done";
+function statusOf(e: { status?: EvStatus | string; done?: boolean }): EvStatus {
+  if (e.status === "todo" || e.status === "in_progress" || e.status === "done") return e.status;
+  return e.done ? "done" : "todo";
+}
+const NEXT_STATUS: Record<EvStatus, EvStatus> = { todo: "in_progress", in_progress: "done", done: "todo" };
 
 type DragPayload =
   | { kind: "event"; id: Id<"calendarEvents"> }
@@ -32,7 +39,7 @@ export default function CalendarView({
   const addEvent = useMutation(api.dashboard.addCalendarEvent);
   const deleteEvent = useMutation(api.dashboard.deleteCalendarEvent);
   const updateEvent = useMutation(api.dashboard.updateCalendarEvent);
-  const setDone = useMutation(api.dashboard.setCalendarEventDone);
+  const setStatus = useMutation(api.dashboard.setCalendarEventStatus);
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -240,18 +247,23 @@ export default function CalendarView({
                     {/* Mobile: compact dots (chips don't fit in small cells) */}
                     {dayEvents.length > 0 && (
                       <div className="flex md:hidden flex-wrap gap-0.5 mt-auto">
-                        {dayEvents.slice(0, 4).map((e) => (
+                        {dayEvents.slice(0, 4).map((e) => {
+                          const st = statusOf(e);
+                          return (
                           <span
                             key={e._id}
                             className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: e.source === "manual" ? "#34d399" : ACCENT }}
+                            style={{ background: st === "in_progress" ? "#eab308" : st === "done" ? (isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)") : e.source === "manual" ? "#34d399" : ACCENT }}
                           />
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                     {/* Desktop: full text chips */}
                     <div className="hidden md:flex flex-col gap-0.5 min-h-0 overflow-hidden">
-                      {dayEvents.slice(0, 4).map((e) => (
+                      {dayEvents.slice(0, 4).map((e) => {
+                        const st = statusOf(e);
+                        return (
                         <span
                           key={e._id}
                           draggable
@@ -259,15 +271,16 @@ export default function CalendarView({
                           onDragEnd={() => { setDrag(null); setDragOver(null); }}
                           className="text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-grab active:cursor-grabbing"
                           style={{
-                            background: e.done ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)") : e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
-                            color: e.done ? (isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)") : e.source === "manual" ? "#34d399" : ACCENT,
-                            textDecoration: e.done ? "line-through" : undefined,
+                            background: st === "done" ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)") : st === "in_progress" ? "rgba(234,179,8,0.18)" : e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
+                            color: st === "done" ? (isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)") : st === "in_progress" ? "#eab308" : e.source === "manual" ? "#34d399" : ACCENT,
+                            textDecoration: st === "done" ? "line-through" : undefined,
                           }}
                           title={e.note || e.title}
                         >
-                          {e.done ? "✓ " : e.link ? "🔗 " : ""}{e.title}
+                          {st === "done" ? "✓ " : st === "in_progress" ? "◐ " : e.link ? "🔗 " : ""}{e.title}
                         </span>
-                      ))}
+                        );
+                      })}
                       {dayEvents.length > 4 && (
                         <span className={`text-[9px] ${text40}`}>+{dayEvents.length - 4} more</span>
                       )}
@@ -285,23 +298,30 @@ export default function CalendarView({
               {selectedEvents.length === 0 ? (
                 <p className={`text-base ${text40} py-3`}>Nothing scheduled. Drag a todo here or add one below.</p>
               ) : (
-                selectedEvents.map((e) => (
+                selectedEvents.map((e) => {
+                  const draggableCard = editingId !== e._id;
+                  const st = statusOf(e);
+                  return (
                   <div
                     key={e._id}
-                    className="group flex items-start gap-3 px-4 py-3.5 rounded-xl"
+                    draggable={draggableCard}
+                    onDragStart={(ev) => { ev.stopPropagation(); setDrag({ kind: "event", id: e._id }); }}
+                    onDragEnd={() => { setDrag(null); setDragOver(null); }}
+                    className={`group flex items-start gap-3 px-4 py-3.5 rounded-xl ${draggableCard ? "cursor-grab active:cursor-grabbing" : ""}`}
                     style={{ background: rowFill, border: rowBorder, opacity: e.done ? 0.6 : 1 }}
+                    title={draggableCard ? "Drag onto any day to move it there" : undefined}
                   >
                     <button
                       className="mt-0.5 w-5 h-5 rounded-md shrink-0 flex items-center justify-center transition-colors"
-                      title={e.done ? "Mark not done" : "Mark done"}
-                      onClick={() => setDone({ id: e._id, done: !e.done })}
+                      title={st === "todo" ? "Mark in progress" : st === "in_progress" ? "Mark done" : "Mark not started"}
+                      onClick={() => setStatus({ id: e._id, status: NEXT_STATUS[st] })}
                       style={{
-                        background: e.done ? "#34d399" : "transparent",
-                        border: `1.5px solid ${e.done ? "#34d399" : (isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)")}`,
+                        background: st === "done" ? "#34d399" : st === "in_progress" ? "#eab308" : "transparent",
+                        border: `1.5px solid ${st === "done" ? "#34d399" : st === "in_progress" ? "#eab308" : (isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)")}`,
                         color: "#fff",
                       }}
                     >
-                      {e.done ? <Check size={13} /> : null}
+                      {st === "done" ? <Check size={13} /> : st === "in_progress" ? <Minus size={13} /> : null}
                     </button>
                     <div className="min-w-0 flex-1">
                       {editingId === e._id ? (
@@ -344,6 +364,7 @@ export default function CalendarView({
                       )}
                       <p className={`text-[11px] uppercase tracking-wide mt-1.5 ${text40}`}>
                         {e.source === "manual" ? "added" : "from vault"}
+                        {st === "in_progress" && <span style={{ color: "#eab308" }}> · in progress</span>}
                       </p>
                     </div>
                     <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -361,7 +382,8 @@ export default function CalendarView({
                       </button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
             <div className="shrink-0 flex gap-2 mt-3">

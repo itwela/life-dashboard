@@ -590,6 +590,17 @@ export const setCalendarEventDone = mutation({
   },
 });
 
+export const setCalendarEventStatus = mutation({
+  args: {
+    id: v.id("calendarEvents"),
+    status: v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done")),
+  },
+  handler: async (ctx, { id, status }) => {
+    // keep `done` in sync so legacy views (grid dots, strikethrough) still work
+    await ctx.db.patch(id, { status, done: status === "done" });
+  },
+});
+
 // Edit an event: change its day (drag-drop reschedule) and/or its text. A vault-derived
 // event that gets edited becomes "manual" so the next sync doesn't wipe the change.
 export const updateCalendarEvent = mutation({
