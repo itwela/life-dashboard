@@ -50,6 +50,8 @@ export default function CalendarView({
   const [drag, setDrag] = useState<DragPayload | null>(null);
   const [editingId, setEditingId] = useState<Id<"calendarEvents"> | null>(null);
   const [editText, setEditText] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<Id<"calendarEvents"> | null>(null);
+  const [noteText, setNoteText] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ id: Id<"calendarEvents">; title: string } | null>(null);
 
   const textMain = isDark ? "text-white" : "text-black";
@@ -120,6 +122,12 @@ export default function CalendarView({
     const title = editText.trim();
     setEditingId(null);
     if (title) await updateEvent({ id, title });
+  };
+
+  const saveNote = async (id: Id<"calendarEvents">) => {
+    const note = noteText.trim();
+    setEditingNoteId(null);
+    await updateEvent({ id, note });
   };
 
   return (
@@ -299,7 +307,7 @@ export default function CalendarView({
                 <p className={`text-base ${text40} py-3`}>Nothing scheduled. Drag a todo here or add one below.</p>
               ) : (
                 selectedEvents.map((e) => {
-                  const draggableCard = editingId !== e._id;
+                  const draggableCard = editingId !== e._id && editingNoteId !== e._id;
                   const st = statusOf(e);
                   return (
                   <div
@@ -347,8 +355,36 @@ export default function CalendarView({
                           {e.title}
                         </p>
                       )}
-                      {e.note && e.note !== e.title && (
-                        <p className={`text-sm mt-1 leading-snug ${text60}`}>{e.note}</p>
+                      {editingNoteId === e._id ? (
+                        <textarea
+                          autoFocus
+                          value={noteText}
+                          onChange={(ev) => setNoteText(ev.target.value)}
+                          onKeyDown={(ev) => {
+                            if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); saveNote(e._id); }
+                            if (ev.key === "Escape") setEditingNoteId(null);
+                          }}
+                          onBlur={() => saveNote(e._id)}
+                          rows={2}
+                          placeholder="Add a note…"
+                          className={`w-full mt-1 px-2 py-1.5 rounded text-sm outline-none resize-none ${textMain}`}
+                          style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.9)", border: `1px solid ${ACCENT}66` }}
+                        />
+                      ) : e.note && e.note !== e.title ? (
+                        <p
+                          className={`text-sm mt-1 leading-snug cursor-text ${text60}`}
+                          onClick={() => { setEditingNoteId(e._id); setNoteText(e.note || ""); }}
+                          title="Click to edit note"
+                        >
+                          {e.note}
+                        </p>
+                      ) : (
+                        <button
+                          className={`text-xs mt-1 ${text40} hover:underline`}
+                          onClick={() => { setEditingNoteId(e._id); setNoteText(""); }}
+                        >
+                          + add note
+                        </button>
                       )}
                       {e.link && (
                         <a
