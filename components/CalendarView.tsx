@@ -20,6 +20,7 @@ function statusOf(e: { status?: EvStatus | string; done?: boolean }): EvStatus {
   return e.done ? "done" : "todo";
 }
 const NEXT_STATUS: Record<EvStatus, EvStatus> = { todo: "in_progress", in_progress: "done", done: "todo" };
+const STATUS_RANK: Record<EvStatus, number> = { todo: 0, in_progress: 1, done: 2 };
 
 type DragPayload =
   | { kind: "event"; id: Id<"calendarEvents"> }
@@ -86,7 +87,9 @@ export default function CalendarView({
 
   const openTodos = [...todos].filter((t) => !t.done).slice(0, 40);
 
-  const selectedEvents = (byDate.get(selected) ?? []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  const selectedEvents = (byDate.get(selected) ?? []).slice().sort(
+    (a, b) => STATUS_RANK[statusOf(a)] - STATUS_RANK[statusOf(b)] || a.title.localeCompare(b.title)
+  );
   const selectedLabel = new Date(selected + "T12:00:00").toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
