@@ -23,6 +23,14 @@ export default defineSchema({
     notes: v.optional(v.string()),
   }).index("by_added", ["addedAt"]),
 
+  // Single-row profile: uploaded avatar + circular crop transform (zoom + pan).
+  profile: defineTable({
+    avatarStorageId: v.optional(v.id("_storage")),
+    scale: v.optional(v.number()),
+    tx: v.optional(v.number()),
+    ty: v.optional(v.number()),
+  }),
+
   // Personal records vault — diploma, certificates, IDs, anything worth keeping on file.
   documents: defineTable({
     title: v.string(),

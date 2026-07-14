@@ -146,6 +146,39 @@ export const generateUploadUrl = mutation({
   },
 });
 
+// ── Profile avatar (uploadable, circular crop transform) ──
+export const getProfile = query({
+  args: {},
+  handler: async (ctx) => {
+    const p = await ctx.db.query("profile").first();
+    if (!p) return null;
+    return { ...p, avatarUrl: p.avatarStorageId ? await ctx.storage.getUrl(p.avatarStorageId) : null };
+  },
+});
+
+export const setAvatar = mutation({
+  args: { avatarStorageId: v.id("_storage"), scale: v.number(), tx: v.number(), ty: v.number() },
+  handler: async (ctx, args) => {
+    const p = await ctx.db.query("profile").first();
+    if (p) {
+      if (p.avatarStorageId && p.avatarStorageId !== args.avatarStorageId) {
+        await ctx.storage.delete(p.avatarStorageId);
+      }
+      await ctx.db.patch(p._id, args);
+    } else {
+      await ctx.db.insert("profile", args);
+    }
+  },
+});
+
+export const updateAvatarTransform = mutation({
+  args: { scale: v.number(), tx: v.number(), ty: v.number() },
+  handler: async (ctx, args) => {
+    const p = await ctx.db.query("profile").first();
+    if (p) await ctx.db.patch(p._id, args);
+  },
+});
+
 // ── Records / documents (diploma, certs, IDs — personal record vault) ──
 export const getDocuments = query({
   args: {},

@@ -14,6 +14,7 @@ import ContentSection from "./components/ContentSection";
 import ProjectsSection from "./components/ProjectsSection";
 import TodosSection from "./components/TodosSection";
 import RecordsSection from "./components/RecordsSection";
+import AvatarEditor from "./components/AvatarEditor";
 import AIAssistant from "./components/AIAssistant";
 import CheckInView from "./components/CheckInView";
 import CalendarView from "@/components/CalendarView";
@@ -115,6 +116,7 @@ export default function DashboardPage() {
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   // The full-view panels zoom 1.25x on desktop for readability, but that overflows a
   // phone screen — disable it on narrow viewports.
   const [isNarrow, setIsNarrow] = useState(false);
@@ -141,6 +143,7 @@ export default function DashboardPage() {
   const todos             = useQuery(api.dashboard.getTodos)              ?? [];
   const jobLeads          = useQuery(api.jobLeads.list, {})               ?? [];
   const documents         = useQuery(api.dashboard.getDocuments)          ?? [];
+  const profile           = useQuery(api.dashboard.getProfile);
 
   const upsertAccount     = useMutation(api.dashboard.upsertAccount);
   const generateUploadUrl = useMutation(api.dashboard.generateUploadUrl);
@@ -161,6 +164,8 @@ export default function DashboardPage() {
   const reorderTodos      = useMutation(api.dashboard.reorderTodos);
   const saveDocument      = useMutation(api.dashboard.saveDocument);
   const deleteDocument    = useMutation(api.dashboard.deleteDocument);
+  const setAvatar         = useMutation(api.dashboard.setAvatar);
+  const updateAvatarTransform = useMutation(api.dashboard.updateAvatarTransform);
 
   // ── Derived data ──
   const financesCash        = accounts.filter(a => a.type==="checking"||a.type==="savings").reduce((s,a)=>s+a.balance,0);
@@ -348,7 +353,18 @@ export default function DashboardPage() {
         {/* 1. Profile + Toggle (left group) */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, justifySelf: "start" }}>
           <div style={{ flexShrink: 0 }}>
-            <Placeholder seed="you" size={48} border="2px solid rgba(255,255,255,0.6)" letter="I" textColor="#fff" />
+            <button
+              onClick={() => setShowAvatarEditor(true)}
+              title="Change profile photo"
+              style={{ width: 48, height: 48, borderRadius: "50%", overflow: "hidden", border: "2px solid rgba(255,255,255,0.6)", padding: 0, cursor: "pointer", background: "none", display: "block" }}
+            >
+              {profile?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatarUrl} alt="you" style={{ width: "100%", height: "100%", objectFit: "cover", transform: `scale(${profile?.scale ?? 1}) translate(${profile?.tx ?? 0}%, ${profile?.ty ?? 0}%)`, transformOrigin: "center" }} />
+              ) : (
+                <Placeholder seed="you" size={48} border="none" letter="I" textColor="#fff" />
+              )}
+            </button>
           </div>
 
           <div style={{
@@ -910,6 +926,20 @@ export default function DashboardPage() {
           onClose={() => setShowCalendar(false)}
           isDark={isDark}
           onCheckIn={() => { setShowCalendar(false); setShowCheckIn(true); }}
+        />
+      )}
+
+      {showAvatarEditor && (
+        <AvatarEditor
+          isDark={isDark}
+          currentUrl={profile?.avatarUrl ?? null}
+          currentScale={profile?.scale ?? 1}
+          currentTx={profile?.tx ?? 0}
+          currentTy={profile?.ty ?? 0}
+          generateUploadUrl={generateUploadUrl}
+          setAvatar={setAvatar}
+          updateAvatarTransform={updateAvatarTransform}
+          onClose={() => setShowAvatarEditor(false)}
         />
       )}
 
