@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
-  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Eye, EyeOff, ListChecks, Briefcase, CalendarDays,
+  Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Eye, EyeOff, ListChecks, Briefcase, CalendarDays, Award,
 } from "lucide-react";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
@@ -13,6 +13,7 @@ import WorkoutsSection from "./components/WorkoutsSection";
 import ContentSection from "./components/ContentSection";
 import ProjectsSection from "./components/ProjectsSection";
 import TodosSection from "./components/TodosSection";
+import RecordsSection from "./components/RecordsSection";
 import AIAssistant from "./components/AIAssistant";
 import CheckInView from "./components/CheckInView";
 import CalendarView from "@/components/CalendarView";
@@ -21,7 +22,7 @@ import { JobLeadsFeed } from "@/components/JobLeadsFeed";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WGU_DEFAULTS = { totalCU: 119, earnedCU: 43, activeCount: 13, termsCompleted: 5, termsTotal: 11 };
-type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "todos" | "leads";
+type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "todos" | "leads" | "records";
 
 const LIGHT_VIDEO = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_103318_2aa26b55-df1a-43a6-903d-941e718c9366.mp4";
 const DARK_VIDEO  = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_102933_4e8f73b5-775a-4179-b2fb-472f59063dcd.mp4";
@@ -139,6 +140,7 @@ export default function DashboardPage() {
   const projects          = useQuery(api.dashboard.getProjects)           ?? [];
   const todos             = useQuery(api.dashboard.getTodos)              ?? [];
   const jobLeads          = useQuery(api.jobLeads.list, {})               ?? [];
+  const documents         = useQuery(api.dashboard.getDocuments)          ?? [];
 
   const upsertAccount     = useMutation(api.dashboard.upsertAccount);
   const generateUploadUrl = useMutation(api.dashboard.generateUploadUrl);
@@ -157,6 +159,8 @@ export default function DashboardPage() {
   const upsertProject     = useMutation(api.dashboard.upsertProject);
   const toggleTodo        = useMutation(api.dashboard.toggleTodo);
   const reorderTodos      = useMutation(api.dashboard.reorderTodos);
+  const saveDocument      = useMutation(api.dashboard.saveDocument);
+  const deleteDocument    = useMutation(api.dashboard.deleteDocument);
 
   // ── Derived data ──
   const financesCash        = accounts.filter(a => a.type==="checking"||a.type==="savings").reduce((s,a)=>s+a.balance,0);
@@ -252,6 +256,7 @@ export default function DashboardPage() {
     content:  "#5a9e8a",
     todos:    "#818cf8",
     leads:    "#4a90c4",
+    records:  "#a085c4",
   };
 
   // ── Card styles ──
@@ -768,6 +773,30 @@ export default function DashboardPage() {
           </div>
           <CardFooter count={jobLeads.length || "—"} label="total leads" isDark={isDark} />
         </div>
+
+        {/* ─── Card 10: Records (glass dark) ─── */}
+        <div style={glassDarkStyle} {...hoverProps} onClick={() => setFullViewSection("records")}>
+          <CardHeader
+            title="Records"
+            subtitle="Diploma · Certs · IDs"
+            icon={<Award size={20} color="#fff" />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
+            <span style={{ fontSize: "2.8rem", fontWeight: 700, color: "#fff", letterSpacing: "-0.05em", lineHeight: 1 }}>
+              {documents.length}
+            </span>
+            <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
+              {documents.length === 1 ? "document on file" : "documents on file"}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>
+              {documents.length || "—"}
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.55)" }}>tap to view & upload</span>
+          </div>
+        </div>
       </div>
 
       {/* ── Indicators ── */}
@@ -850,6 +879,7 @@ export default function DashboardPage() {
                   content: "Content",
                   todos: "To-Do",
                   leads: "Job Leads",
+                  records: "Records",
                 }[fullViewSection]}
               </span>
             </div>
@@ -868,6 +898,7 @@ export default function DashboardPage() {
               {fullViewSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
               {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} reorderTodos={reorderTodos} />}
               {fullViewSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
+              {fullViewSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} deleteDocument={deleteDocument} />}
             </div>
           </div>
         </div>

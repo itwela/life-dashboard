@@ -146,6 +146,39 @@ export const generateUploadUrl = mutation({
   },
 });
 
+// ── Records / documents (diploma, certs, IDs — personal record vault) ──
+export const getDocuments = query({
+  args: {},
+  handler: async (ctx) => {
+    const docs = await ctx.db.query("documents").withIndex("by_added").order("desc").collect();
+    return Promise.all(docs.map(async (d) => ({ ...d, url: await ctx.storage.getUrl(d.storageId) })));
+  },
+});
+
+export const saveDocument = mutation({
+  args: {
+    title: v.string(),
+    category: v.optional(v.string()),
+    storageId: v.id("_storage"),
+    mimeType: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("documents", { ...args, addedAt: Date.now() });
+  },
+});
+
+export const deleteDocument = mutation({
+  args: { id: v.id("documents") },
+  handler: async (ctx, { id }) => {
+    const doc = await ctx.db.get(id);
+    if (doc) {
+      await ctx.storage.delete(doc.storageId);
+      await ctx.db.delete(id);
+    }
+  },
+});
+
 export const saveFinanceFile = mutation({
   args: {
     name: v.string(),
@@ -572,6 +605,24 @@ export const addCalendarEvent = mutation({
   args: { date: v.string(), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
   handler: async (ctx, { date, title, note, link }) => {
     await ctx.db.insert("calendarEvents", { date, title, note, link, source: "manual" });
+  },
+});
+
+// Bulk insert (recurring events / habits) — one call instead of N.
+export const addCalendarEventsBulk = mutation({
+  args: {
+    events: v.array(v.object({
+      date: v.string(),
+      title: v.string(),
+      note: v.optional(v.string()),
+      link: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, { events }) => {
+    for (const e of events) {
+      await ctx.db.insert("calendarEvents", { ...e, source: "manual" });
+    }
+    return { inserted: events.length };
   },
 });
 

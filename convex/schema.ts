@@ -23,6 +23,16 @@ export default defineSchema({
     notes: v.optional(v.string()),
   }).index("by_added", ["addedAt"]),
 
+  // Personal records vault — diploma, certificates, IDs, anything worth keeping on file.
+  documents: defineTable({
+    title: v.string(),
+    category: v.optional(v.string()),
+    storageId: v.id("_storage"),
+    mimeType: v.optional(v.string()),
+    note: v.optional(v.string()),
+    addedAt: v.number(),
+  }).index("by_added", ["addedAt"]),
+
   transactions: defineTable({
     label: v.string(),
     amount: v.number(),
