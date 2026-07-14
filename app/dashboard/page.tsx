@@ -164,6 +164,7 @@ export default function DashboardPage() {
   const reorderTodos      = useMutation(api.dashboard.reorderTodos);
   const saveDocument      = useMutation(api.dashboard.saveDocument);
   const deleteDocument    = useMutation(api.dashboard.deleteDocument);
+  const updateDocument    = useMutation(api.dashboard.updateDocument);
   const setAvatar         = useMutation(api.dashboard.setAvatar);
   const updateAvatarTransform = useMutation(api.dashboard.updateAvatarTransform);
 
@@ -914,7 +915,7 @@ export default function DashboardPage() {
               {fullViewSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
               {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} reorderTodos={reorderTodos} />}
               {fullViewSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
-              {fullViewSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} deleteDocument={deleteDocument} />}
+              {fullViewSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} updateDocument={updateDocument} deleteDocument={deleteDocument} />}
             </div>
           </div>
         </div>

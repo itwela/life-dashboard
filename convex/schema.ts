@@ -39,6 +39,7 @@ export default defineSchema({
     mimeType: v.optional(v.string()),
     note: v.optional(v.string()),
     addedAt: v.number(),
+    issuedDate: v.optional(v.string()), // when it was earned/received (YYYY-MM-DD)
   }).index("by_added", ["addedAt"]),
 
   transactions: defineTable({

@@ -12,24 +12,27 @@ type DocItem = {
   mimeType?: string;
   note?: string;
   addedAt: number;
+  issuedDate?: string;
 };
 
 interface Props {
   isDark?: boolean;
   documents: DocItem[];
   generateUploadUrl: () => Promise<string>;
-  saveDocument: (args: { title: string; category?: string; storageId: Id<"_storage">; mimeType?: string; note?: string }) => Promise<unknown>;
+  saveDocument: (args: { title: string; category?: string; storageId: Id<"_storage">; mimeType?: string; note?: string; issuedDate?: string }) => Promise<unknown>;
+  updateDocument: (args: { id: Id<"documents">; title?: string; category?: string; issuedDate?: string }) => Promise<unknown>;
   deleteDocument: (args: { id: Id<"documents"> }) => Promise<unknown>;
 }
 
 const CATEGORIES = ["Certification", "Diploma", "ID", "Award", "Other"];
 const ACCENT = "#a085c4";
 
-export default function RecordsSection({ isDark = true, documents, generateUploadUrl, saveDocument, deleteDocument }: Props) {
+export default function RecordsSection({ isDark = true, documents, generateUploadUrl, saveDocument, updateDocument, deleteDocument }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Certification");
+  const [issuedDate, setIssuedDate] = useState("");
   const [viewing, setViewing] = useState<DocItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Id<"documents"> | null>(null);
 
@@ -51,8 +54,10 @@ export default function RecordsSection({ isDark = true, documents, generateUploa
         category,
         storageId,
         mimeType: file.type,
+        issuedDate: issuedDate || undefined,
       });
       setTitle("");
+      setIssuedDate("");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -76,6 +81,13 @@ export default function RecordsSection({ isDark = true, documents, generateUploa
         >
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+        <input
+          type="date"
+          value={issuedDate}
+          onChange={(e) => setIssuedDate(e.target.value)}
+          title="Date received (optional)"
+          style={{ padding: "10px 14px", borderRadius: 12, border, background: cardBg, color: textMain, fontSize: "0.9rem", colorScheme: isDark ? "dark" : "light" }}
+        />
         <input ref={fileRef} type="file" onChange={handleFile} style={{ display: "none" }} />
         <button
           onClick={() => fileRef.current?.click()}
@@ -108,14 +120,23 @@ export default function RecordsSection({ isDark = true, documents, generateUploa
                     <FileText size={40} color={textMuted} />
                   )}
                 </div>
-                <div style={{ padding: "10px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: textMain, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</div>
-                    {d.category && <div style={{ fontSize: "0.72rem", color: ACCENT, marginTop: 2 }}>{d.category}</div>}
+                <div style={{ padding: "10px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 600, color: textMain, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</div>
+                      {d.category && <div style={{ fontSize: "0.72rem", color: ACCENT, marginTop: 2 }}>{d.category}</div>}
+                    </div>
+                    <button onClick={() => setPendingDelete(d._id)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, flexShrink: 0 }}>
+                      <Trash2 size={15} />
+                    </button>
                   </div>
-                  <button onClick={() => setPendingDelete(d._id)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, flexShrink: 0 }}>
-                    <Trash2 size={15} />
-                  </button>
+                  <input
+                    type="date"
+                    value={d.issuedDate ?? ""}
+                    onChange={(e) => updateDocument({ id: d._id, issuedDate: e.target.value })}
+                    title="Date received"
+                    style={{ marginTop: 8, width: "100%", padding: "5px 8px", borderRadius: 8, border, background: isDark ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.03)", color: textMuted, fontSize: "0.72rem", colorScheme: isDark ? "dark" : "light" }}
+                  />
                 </div>
               </div>
             );

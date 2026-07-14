@@ -195,9 +195,22 @@ export const saveDocument = mutation({
     storageId: v.id("_storage"),
     mimeType: v.optional(v.string()),
     note: v.optional(v.string()),
+    issuedDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("documents", { ...args, addedAt: Date.now() });
+  },
+});
+
+export const updateDocument = mutation({
+  args: {
+    id: v.id("documents"),
+    title: v.optional(v.string()),
+    category: v.optional(v.string()),
+    issuedDate: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    await ctx.db.patch(id, patch);
   },
 });
 
