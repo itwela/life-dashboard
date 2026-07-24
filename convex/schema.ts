@@ -143,7 +143,8 @@ export default defineSchema({
   // Month calendar: vault-derived events (re-seeded by scripts/sync-calendar.mjs,
   // which wipes source="vault" rows) plus manual ones added from the UI/agent.
   calendarEvents: defineTable({
-    date: v.string(), // "YYYY-MM-DD"
+    date: v.string(), // "YYYY-MM-DD" — start day
+    endDate: v.optional(v.string()), // "YYYY-MM-DD" — last day; when set and > date, the event is multi-day and draws as a spanning bar
     title: v.string(),
     source: v.union(v.literal("vault"), v.literal("manual")),
     note: v.optional(v.string()), // full detail (time, who, confirmation #, etc.)

@@ -648,9 +648,9 @@ export const getCalendarEvents = query({
 });
 
 export const addCalendarEvent = mutation({
-  args: { date: v.string(), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
-  handler: async (ctx, { date, title, note, link }) => {
-    await ctx.db.insert("calendarEvents", { date, title, note, link, source: "manual" });
+  args: { date: v.string(), endDate: v.optional(v.string()), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
+  handler: async (ctx, { date, endDate, title, note, link }) => {
+    await ctx.db.insert("calendarEvents", { date, endDate: endDate || undefined, title, note, link, source: "manual" });
   },
 });
 
@@ -704,13 +704,16 @@ export const updateCalendarEvent = mutation({
   args: {
     id: v.id("calendarEvents"),
     date: v.optional(v.string()),
+    endDate: v.optional(v.string()),
     title: v.optional(v.string()),
     note: v.optional(v.string()),
     link: v.optional(v.string()),
   },
-  handler: async (ctx, { id, date, title, note, link }) => {
+  handler: async (ctx, { id, date, endDate, title, note, link }) => {
     const patch: Record<string, unknown> = { source: "manual" };
     if (date !== undefined) patch.date = date;
+    // Empty string clears the multi-day span back to a single-day event.
+    if (endDate !== undefined) patch.endDate = endDate || undefined;
     if (title !== undefined) patch.title = title;
     if (note !== undefined) patch.note = note;
     if (link !== undefined) patch.link = link;

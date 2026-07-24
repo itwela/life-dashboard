@@ -14,6 +14,27 @@ function fmt(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+// "YYYY-MM-DD" math. Dates are zero-padded so string comparison is chronological.
+function addDaysStr(dateStr: string, delta: number) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + delta);
+  return fmt(dt.getFullYear(), dt.getMonth(), dt.getDate());
+}
+function diffDays(from: string, to: string) {
+  const [ay, am, ad] = from.split("-").map(Number);
+  const [by, bm, bd] = to.split("-").map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+}
+type EvLike = { date: string; endDate?: string };
+function isMultiDay(e: EvLike) {
+  return !!(e.endDate && e.endDate > e.date);
+}
+function coversDate(e: EvLike, date: string) {
+  if (isMultiDay(e)) return e.date <= date && date <= (e.endDate as string);
+  return e.date === date;
+}
+
 type EvStatus = "todo" | "in_progress" | "done";
 function statusOf(e: { status?: EvStatus | string; done?: boolean }): EvStatus {
   if (e.status === "todo" || e.status === "in_progress" || e.status === "done") return e.status;
@@ -62,11 +83,17 @@ export default function CalendarView({
   const rowBorder = isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.06)";
   const mutedText = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
 
-  const byDate = new Map<string, typeof events>();
+  // Single-day events keyed by their day (desktop in-cell chips). Multi-day events
+  // are drawn separately as spanning bars, so they're excluded here to avoid double-render.
+  const singleByDate = new Map<string, typeof events>();
   for (const e of events) {
-    if (!byDate.has(e.date)) byDate.set(e.date, []);
-    byDate.get(e.date)!.push(e);
+    if (isMultiDay(e)) continue;
+    if (!singleByDate.has(e.date)) singleByDate.set(e.date, []);
+    singleByDate.get(e.date)!.push(e);
   }
+  const multiDayEvents = events.filter(isMultiDay);
+  // All events (single + multi) that touch a given day — for mobile dots.
+  const eventsOn = (date: string) => events.filter((e) => coversDate(e, date));
 
   const todayStr = fmt(now.getFullYear(), now.getMonth(), now.getDate());
   const monthName = new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -79,6 +106,57 @@ export default function CalendarView({
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
+  // Spanning-bar layout constants (px). Bars float in a per-week overlay below the day number.
+  const BAR_H = 18;
+  const BAR_TOP = 22;
+  const DAY_NUM_H = 16;
+
+  // Chunk the flat cell list into week rows so bars can be laid out and wrapped per week.
+  const weeks: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  // For each week, build the multi-day bar segments (clamped to the visible days),
+  // then greedily pack overlapping spans into stacked lanes.
+  type Seg = {
+    key: string;
+    startCol: number;
+    span: number;
+    leftRound: boolean; // the event truly starts here (not continued from a prior week)
+    rightRound: boolean; // the event truly ends here
+    lane: number;
+    event: (typeof events)[number];
+  };
+  const weekSegments: Seg[][] = [];
+  const weekLaneCount: number[] = [];
+  for (const week of weeks) {
+    const dates = week.map((d) => (d === null ? null : fmt(year, month, d)));
+    const raw: Omit<Seg, "lane">[] = [];
+    for (const e of multiDayEvents) {
+      const cols = dates.map((dt, i) => (dt && coversDate(e, dt) ? i : -1)).filter((i) => i >= 0);
+      if (cols.length === 0) continue;
+      const startCol = cols[0];
+      const endCol = cols[cols.length - 1];
+      raw.push({
+        key: e._id,
+        startCol,
+        span: endCol - startCol + 1,
+        leftRound: dates[startCol] === e.date,
+        rightRound: dates[endCol] === e.endDate,
+        event: e,
+      });
+    }
+    raw.sort((a, b) => a.startCol - b.startCol);
+    const laneEnds: number[] = []; // last occupied column index per lane
+    const segs: Seg[] = raw.map((r) => {
+      let lane = laneEnds.findIndex((end) => end < r.startCol);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(-1); }
+      laneEnds[lane] = r.startCol + r.span - 1;
+      return { ...r, lane };
+    });
+    weekSegments.push(segs);
+    weekLaneCount.push(laneEnds.length);
+  }
+
   const nav = (delta: number) => {
     const d = new Date(year, month + delta, 1);
     setYear(d.getFullYear());
@@ -87,7 +165,7 @@ export default function CalendarView({
 
   const openTodos = [...todos].filter((t) => !t.done).slice(0, 40);
 
-  const selectedEvents = (byDate.get(selected) ?? []).slice().sort(
+  const selectedEvents = events.filter((e) => coversDate(e, selected)).slice().sort(
     (a, b) => STATUS_RANK[statusOf(a)] - STATUS_RANK[statusOf(b)] || a.title.localeCompare(b.title)
   );
   const selectedLabel = new Date(selected + "T12:00:00").toLocaleDateString("en-US", {
@@ -114,7 +192,14 @@ export default function CalendarView({
     setDrag(null);
     if (!payload) return;
     if (payload.kind === "event") {
-      await updateEvent({ id: payload.id, date });
+      const ev = events.find((x) => x._id === payload.id);
+      if (ev && isMultiDay(ev)) {
+        // Move the whole span: shift the end date by the same number of days as the start.
+        const delta = diffDays(ev.date, date);
+        await updateEvent({ id: payload.id, date, endDate: addDaysStr(ev.endDate as string, delta) });
+      } else {
+        await updateEvent({ id: payload.id, date });
+      }
     } else {
       await addEvent({ date, title: payload.title });
     }
@@ -221,81 +306,129 @@ export default function CalendarView({
                 <div key={w} className={`text-center text-[10px] sm:text-[11px] font-semibold py-1 ${text40}`}>{w}</div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 flex-1 min-h-0 auto-rows-fr">
-              {cells.map((day, i) => {
-                if (day === null) return <div key={i} />;
-                const date = fmt(year, month, day);
-                const dayEvents = byDate.get(date) ?? [];
-                const isToday = date === todayStr;
-                const isSelected = date === selected;
-                const isDragTarget = dragOver === date;
+            <div className="flex flex-col gap-1 sm:gap-1.5 flex-1 min-h-0">
+              {weeks.map((week, wi) => {
+                const segs = weekSegments[wi];
+                const lanes = weekLaneCount[wi];
+                // Reserve vertical room in each cell below the day number so single-day
+                // chips don't sit under the floating bars.
+                const spacerH = lanes > 0 ? BAR_TOP - DAY_NUM_H + lanes * BAR_H : 0;
                 return (
-                  <div
-                    key={i}
-                    onClick={() => setSelected(date)}
-                    onDragOver={(e) => { e.preventDefault(); if (dragOver !== date) setDragOver(date); }}
-                    onDragLeave={() => setDragOver((prev) => (prev === date ? null : prev))}
-                    onDrop={() => dropOnDay(date)}
-                    className="rounded-lg sm:rounded-xl p-1 sm:p-1.5 text-left flex flex-col overflow-hidden transition-colors cursor-pointer"
-                    style={{
-                      background: isDragTarget ? `${ACCENT}33` : isSelected ? `${ACCENT}1f` : rowFill,
-                      border: isToday
-                        ? `1.5px solid ${ACCENT}`
-                        : isDragTarget
-                          ? `1.5px dashed ${ACCENT}`
-                          : isSelected
-                            ? `1px solid ${ACCENT}66`
-                            : rowBorder,
-                      boxShadow: isToday ? `0 0 10px ${ACCENT}44` : undefined,
-                    }}
-                  >
-                    <span
-                      className="text-[11px] sm:text-[12px] font-bold mb-0.5"
-                      style={{ color: isToday ? ACCENT : isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.7)" }}
-                    >
-                      {day}
-                    </span>
-                    {/* Mobile: compact dots (chips don't fit in small cells) */}
-                    {dayEvents.length > 0 && (
-                      <div className="flex md:hidden flex-wrap gap-0.5 mt-auto">
-                        {dayEvents.slice(0, 4).map((e) => {
+                  <div key={wi} className="relative grid grid-cols-7 gap-1 sm:gap-1.5 flex-1 min-h-0">
+                    {week.map((day, di) => {
+                      const i = wi * 7 + di;
+                      if (day === null) return <div key={i} />;
+                      const date = fmt(year, month, day);
+                      const singleEvents = singleByDate.get(date) ?? [];
+                      const mobileEvents = eventsOn(date);
+                      const isToday = date === todayStr;
+                      const isSelected = date === selected;
+                      const isDragTarget = dragOver === date;
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => setSelected(date)}
+                          onDragOver={(e) => { e.preventDefault(); if (dragOver !== date) setDragOver(date); }}
+                          onDragLeave={() => setDragOver((prev) => (prev === date ? null : prev))}
+                          onDrop={() => dropOnDay(date)}
+                          className="rounded-lg sm:rounded-xl p-1 sm:p-1.5 text-left flex flex-col overflow-hidden transition-colors cursor-pointer"
+                          style={{
+                            background: isDragTarget ? `${ACCENT}33` : isSelected ? `${ACCENT}1f` : rowFill,
+                            border: isToday
+                              ? `1.5px solid ${ACCENT}`
+                              : isDragTarget
+                                ? `1.5px dashed ${ACCENT}`
+                                : isSelected
+                                  ? `1px solid ${ACCENT}66`
+                                  : rowBorder,
+                            boxShadow: isToday ? `0 0 10px ${ACCENT}44` : undefined,
+                          }}
+                        >
+                          <span
+                            className="text-[11px] sm:text-[12px] font-bold mb-0.5"
+                            style={{ color: isToday ? ACCENT : isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.7)" }}
+                          >
+                            {day}
+                          </span>
+                          {/* Reserve space for the spanning bars floating in the week overlay (desktop) */}
+                          {spacerH > 0 && <div className="hidden md:block shrink-0" style={{ height: spacerH }} />}
+                          {/* Mobile: compact dots — includes multi-day events (no overlay on mobile) */}
+                          {mobileEvents.length > 0 && (
+                            <div className="flex md:hidden flex-wrap gap-0.5 mt-auto">
+                              {mobileEvents.slice(0, 4).map((e) => {
+                                const st = statusOf(e);
+                                return (
+                                <span
+                                  key={e._id}
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ background: st === "in_progress" ? "#eab308" : st === "done" ? (isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)") : e.source === "manual" ? "#34d399" : ACCENT }}
+                                />
+                                );
+                              })}
+                            </div>
+                          )}
+                          {/* Desktop: full text chips for single-day events only */}
+                          <div className="hidden md:flex flex-col gap-0.5 min-h-0 overflow-hidden">
+                            {singleEvents.slice(0, 4).map((e) => {
+                              const st = statusOf(e);
+                              return (
+                              <span
+                                key={e._id}
+                                draggable
+                                onDragStart={(ev) => { ev.stopPropagation(); setDrag({ kind: "event", id: e._id }); }}
+                                onDragEnd={() => { setDrag(null); setDragOver(null); }}
+                                className="text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-grab active:cursor-grabbing"
+                                style={{
+                                  background: st === "done" ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)") : st === "in_progress" ? "rgba(234,179,8,0.18)" : e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
+                                  color: st === "done" ? (isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)") : st === "in_progress" ? "#eab308" : e.source === "manual" ? "#34d399" : ACCENT,
+                                  textDecoration: st === "done" ? "line-through" : undefined,
+                                }}
+                                title={e.note || e.title}
+                              >
+                                {st === "done" ? "✓ " : st === "in_progress" ? "◐ " : e.link ? "🔗 " : ""}{e.title}
+                              </span>
+                              );
+                            })}
+                            {singleEvents.length > 4 && (
+                              <span className={`text-[9px] ${text40}`}>+{singleEvents.length - 4} more</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* Desktop spanning-bar overlay — same 7-col grid geometry so bars align to day columns */}
+                    {segs.length > 0 && (
+                      <div className="hidden md:grid grid-cols-7 gap-1 sm:gap-1.5 absolute inset-0 pointer-events-none">
+                        {segs.map((seg) => {
+                          const e = seg.event;
                           const st = statusOf(e);
                           return (
-                          <span
-                            key={e._id}
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: st === "in_progress" ? "#eab308" : st === "done" ? (isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)") : e.source === "manual" ? "#34d399" : ACCENT }}
-                          />
+                            <div
+                              key={seg.key}
+                              className="text-[10px] leading-tight px-1.5 flex items-center overflow-hidden whitespace-nowrap font-medium"
+                              style={{
+                                gridColumn: `${seg.startCol + 1} / span ${seg.span}`,
+                                gridRow: 1,
+                                marginTop: BAR_TOP + seg.lane * BAR_H,
+                                marginLeft: seg.leftRound ? 2 : 0,
+                                marginRight: seg.rightRound ? 2 : 0,
+                                height: BAR_H - 3,
+                                background: st === "done" ? (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)") : st === "in_progress" ? "rgba(234,179,8,0.22)" : e.source === "manual" ? "rgba(52,211,153,0.22)" : "rgba(56,189,248,0.20)",
+                                color: st === "done" ? (isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)") : st === "in_progress" ? "#eab308" : e.source === "manual" ? "#34d399" : ACCENT,
+                                borderTopLeftRadius: seg.leftRound ? 5 : 0,
+                                borderBottomLeftRadius: seg.leftRound ? 5 : 0,
+                                borderTopRightRadius: seg.rightRound ? 5 : 0,
+                                borderBottomRightRadius: seg.rightRound ? 5 : 0,
+                                textDecoration: st === "done" ? "line-through" : undefined,
+                              }}
+                              title={e.note || e.title}
+                            >
+                              {seg.leftRound ? `${st === "done" ? "✓ " : st === "in_progress" ? "◐ " : ""}${e.title}` : ""}
+                            </div>
                           );
                         })}
                       </div>
                     )}
-                    {/* Desktop: full text chips */}
-                    <div className="hidden md:flex flex-col gap-0.5 min-h-0 overflow-hidden">
-                      {dayEvents.slice(0, 4).map((e) => {
-                        const st = statusOf(e);
-                        return (
-                        <span
-                          key={e._id}
-                          draggable
-                          onDragStart={(ev) => { ev.stopPropagation(); setDrag({ kind: "event", id: e._id }); }}
-                          onDragEnd={() => { setDrag(null); setDragOver(null); }}
-                          className="text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-grab active:cursor-grabbing"
-                          style={{
-                            background: st === "done" ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)") : st === "in_progress" ? "rgba(234,179,8,0.18)" : e.source === "manual" ? "rgba(52,211,153,0.18)" : "rgba(56,189,248,0.16)",
-                            color: st === "done" ? (isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)") : st === "in_progress" ? "#eab308" : e.source === "manual" ? "#34d399" : ACCENT,
-                            textDecoration: st === "done" ? "line-through" : undefined,
-                          }}
-                          title={e.note || e.title}
-                        >
-                          {st === "done" ? "✓ " : st === "in_progress" ? "◐ " : e.link ? "🔗 " : ""}{e.title}
-                        </span>
-                        );
-                      })}
-                      {dayEvents.length > 4 && (
-                        <span className={`text-[9px] ${text40}`}>+{dayEvents.length - 4} more</span>
-                      )}
-                    </div>
                   </div>
                 );
               })}
@@ -401,6 +534,28 @@ export default function CalendarView({
                           <ExternalLink size={13} /> Open link
                         </a>
                       )}
+                      {/* Multi-day span: set an end date to draw this as a bar across days */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className={`text-[11px] ${text40}`}>{isMultiDay(e) ? "ends" : "spans to"}</span>
+                        <input
+                          type="date"
+                          value={e.endDate ?? ""}
+                          min={e.date}
+                          onClick={(ev) => ev.stopPropagation()}
+                          onChange={(ev) => updateEvent({ id: e._id, endDate: ev.target.value })}
+                          className="text-[11px] px-1.5 py-0.5 rounded outline-none"
+                          style={{ background: isDark ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.9)", border: rowBorder, color: mutedText }}
+                        />
+                        {isMultiDay(e) && (
+                          <button
+                            className={`text-[11px] ${text40} hover:underline`}
+                            onClick={() => updateEvent({ id: e._id, endDate: "" })}
+                            title="Make it a single-day event again"
+                          >
+                            clear
+                          </button>
+                        )}
+                      </div>
                       <p className={`text-[11px] uppercase tracking-wide mt-1.5 ${text40}`}>
                         {e.source === "manual" ? "added" : "from vault"}
                         {st === "in_progress" && <span style={{ color: "#eab308" }}> · in progress</span>}
