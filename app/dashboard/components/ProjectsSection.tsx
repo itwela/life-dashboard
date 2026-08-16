@@ -29,6 +29,8 @@ export default function ProjectsSection({ projects, upsertProject, isDark = true
   const [status, setStatus]       = useState<"active" | "paused" | "shipped">("active");
   const [revenue, setRevenue]     = useState("0");
   const [notes, setNotes]         = useState("");
+  // Hidden by default on every load — safe for streaming/screen-share. Never persisted.
+  const [showRevenue, setShowRevenue] = useState(false);
 
   const textMain  = isDark ? "text-white"    : "text-black";
   const text40    = isDark ? "text-white/40" : "text-black/40";
@@ -102,8 +104,19 @@ export default function ProjectsSection({ projects, upsertProject, isDark = true
         <div className="flex flex-col gap-4">
           {/* Revenue */}
           <div className="rounded-xl p-5 shrink-0" style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04))", border: "1px solid rgba(251,191,36,0.2)", boxShadow: "0 0 20px rgba(251,191,36,0.1)" }}>
-            <p className={`text-xs ${text40} uppercase tracking-widest mb-1`}>Total Revenue</p>
-            <p className="text-4xl font-black" style={{ color: ACCENT, textShadow: "0 0 30px rgba(251,191,36,0.5)" }}>{fmt(totalRevenue)}</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className={`text-xs ${text40} uppercase tracking-widest`}>Total Revenue</p>
+              <button
+                onClick={() => setShowRevenue((v) => !v)}
+                className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${text40} hover:text-yellow-400 transition-colors`}
+                style={{ background: softFill, border: softBorder }}
+              >
+                {showRevenue ? "🙈 Hide" : "👁️ Show"}
+              </button>
+            </div>
+            <p className="text-4xl font-black" style={{ color: ACCENT, textShadow: "0 0 30px rgba(251,191,36,0.5)" }}>
+              {showRevenue ? fmt(totalRevenue) : "••••••"}
+            </p>
           </div>
 
           {/* Status counts */}
@@ -159,7 +172,7 @@ export default function ProjectsSection({ projects, upsertProject, isDark = true
                       <div className="flex items-center justify-between pt-2 mt-0.5" style={{ borderTop: softBorder }}>
                         <span className={`text-[11px] ${text30}`}>Added {rel(p._creationTime)}</span>
                         {p.revenue > 0
-                          ? <span className="text-sm font-bold text-yellow-400">{fmt(p.revenue)}</span>
+                          ? <span className="text-sm font-bold text-yellow-400">{showRevenue ? fmt(p.revenue) : "••••"}</span>
                           : <span className={`text-[11px] ${text30}`}>no revenue yet</span>}
                       </div>
                     </div>
