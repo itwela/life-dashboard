@@ -160,7 +160,10 @@ function DashboardApp() {
   const updateContentPost = useMutation(api.dashboard.updateContentPost);
   const expandContentIdea = useAction(api.aiAssistant.expandContentIdea);
   const upsertProject     = useMutation(api.dashboard.upsertProject);
+  const deleteProject     = useMutation(api.dashboard.deleteProject);
   const toggleTodo        = useMutation(api.dashboard.toggleTodo);
+  const updateTodo        = useMutation(api.dashboard.updateTodo);
+  const deleteTodo        = useMutation(api.dashboard.deleteTodo);
   const reorderTodos      = useMutation(api.dashboard.reorderTodos);
   const saveDocument      = useMutation(api.dashboard.saveDocument);
   const deleteDocument    = useMutation(api.dashboard.deleteDocument);
@@ -232,13 +235,14 @@ function DashboardApp() {
     return { active, height: barH(i, active) };
   }), [workedOutDays]);
 
-  const sortedJobLeads    = [...jobLeads].sort((a, b) => b.updatedAt - a.updatedAt);
+  const activeJobLeads    = jobLeads.filter((l) => !l.archived);
+  const sortedJobLeads    = [...activeJobLeads].sort((a, b) => b.updatedAt - a.updatedAt);
   const mostRecentLead    = sortedJobLeads[0];
   const RECENT_MS         = 14 * 24 * 60 * 60 * 1000;
-  const recentSentLeads   = jobLeads.filter(
+  const recentSentLeads   = activeJobLeads.filter(
     (l) => (l.status === "sent" || l.status === "followed_up") && Date.now() - l.updatedAt < RECENT_MS
   ).length;
-  const recentRepliedLeads = jobLeads.filter(
+  const recentRepliedLeads = activeJobLeads.filter(
     (l) => l.status === "replied" && Date.now() - l.updatedAt < RECENT_MS
   ).length;
 
@@ -718,11 +722,11 @@ function DashboardApp() {
           </div>
         </div>
 
-        {/* ─── Card 8: To-Do (synced from vault Hub) ─── */}
+        {/* ─── Card 8: To-Do (dashboard is the source of truth) ─── */}
         <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("todos")}>
           <CardHeader
             title="To-Do"
-            subtitle="From your vault"
+            subtitle="On this dashboard"
             icon={<ListChecks size={20} />}
             isDark={isDark}
           />
@@ -762,7 +766,7 @@ function DashboardApp() {
           </div>
         </div>
 
-        {/* ─── Card 9: Job Leads (glass mid, read-only) ─── */}
+        {/* ─── Card 9: Job Leads (archived leads stay out of these counts) ─── */}
         <div style={glassMidStyle} {...hoverProps} onClick={() => setFullViewSection("leads")}>
           <CardHeader
             title="Job Leads"
@@ -772,7 +776,7 @@ function DashboardApp() {
           />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
             <div style={{ fontSize: "2.4rem", fontWeight: 700, color: textMain, letterSpacing: "-0.05em", lineHeight: 1 }}>
-              {jobLeads.length}
+              {activeJobLeads.length}
             </div>
             <div style={{ display: "flex", gap: 16 }}>
               <div>
@@ -788,7 +792,7 @@ function DashboardApp() {
               {mostRecentLead ? `Latest: ${mostRecentLead.company}` : "No leads yet"}
             </div>
           </div>
-          <CardFooter count={jobLeads.length || "—"} label="total leads" isDark={isDark} />
+          <CardFooter count={activeJobLeads.length || "—"} label="active leads" isDark={isDark} />
         </div>
 
         {/* ─── Card 10: Records (glass dark) ─── */}
@@ -911,9 +915,9 @@ function DashboardApp() {
               {fullViewSection==="school"   && <SchoolSection isDark={isDark} courses={courses} upsertCourse={upsertCourse} schoolProgress={wgu} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
               {fullViewSection==="fitness"  && <WorkoutsSection isDark={isDark} workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
               {fullViewSection==="reading"  && <ReadingSection isDark={isDark} books={books} upsertBook={upsertBook} />}
-              {fullViewSection==="projects" && <ProjectsSection isDark={isDark} projects={projects} upsertProject={upsertProject} />}
+              {fullViewSection==="projects" && <ProjectsSection isDark={isDark} projects={projects} upsertProject={upsertProject} deleteProject={deleteProject} />}
               {fullViewSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
-              {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} reorderTodos={reorderTodos} />}
+              {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} updateTodo={updateTodo} deleteTodo={deleteTodo} reorderTodos={reorderTodos} />}
               {fullViewSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
               {fullViewSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} updateDocument={updateDocument} deleteDocument={deleteDocument} />}
             </div>

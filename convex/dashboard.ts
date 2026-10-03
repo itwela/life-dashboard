@@ -519,7 +519,7 @@ const upsertBookFns = exposeMutation({
 export const upsertBook = upsertBookFns.public;
 export const upsertBookAdmin = upsertBookFns.admin;
 
-// ─── Todos (synced from the Obsidian vault Hub) ─────────────────────────────
+// ─── Todos (dashboard is the source of truth) ───────────────────────────────
 
 const getTodosFns = exposeQuery({
   args: {},
@@ -530,6 +530,11 @@ const getTodosFns = exposeQuery({
 export const getTodos = getTodosFns.public;
 export const getTodosAdmin = getTodosFns.admin;
 
+/**
+ * DESTRUCTIVE. Deletes every todo, then inserts `todos` as the replacement list.
+ * This is the old full-list rebuild. To change one item, use `updateTodo` or `deleteTodo`.
+ * CLI: npx convex run dashboard:seedTodosAdmin '{"todos":[...]}'
+ */
 const seedTodosFns = exposeMutation({
   args: {
     todos: v.array(
@@ -570,6 +575,51 @@ const addTodoFns = exposeMutation({
 });
 export const addTodo = addTodoFns.public;
 export const addTodoAdmin = addTodoFns.admin;
+
+/**
+ * Update a single todo. Omitted fields are left unchanged.
+ * CLI: npx convex run dashboard:updateTodoAdmin '{"id":"<todos id>","text":"New text","category":"Work","done":false}'
+ */
+const updateTodoFns = exposeMutation({
+  args: {
+    id: v.id("todos"),
+    text: v.optional(v.string()),
+    category: v.optional(v.string()),
+    done: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { id, text, category, done }) => {
+    const patch: { text?: string; category?: string; done?: boolean } = {};
+    if (text !== undefined) {
+      const trimmed = text.trim();
+      if (!trimmed) throw new Error("Todo text cannot be empty");
+      patch.text = trimmed;
+    }
+    if (category !== undefined) {
+      const trimmed = category.trim();
+      if (!trimmed) throw new Error("Category cannot be empty");
+      patch.category = trimmed;
+    }
+    if (done !== undefined) patch.done = done;
+    if (Object.keys(patch).length === 0) return;
+    await ctx.db.patch(id, patch);
+  },
+});
+export const updateTodo = updateTodoFns.public;
+export const updateTodoAdmin = updateTodoFns.admin;
+
+/**
+ * Delete a single todo. The rest of the list is left alone.
+ * CLI: npx convex run dashboard:deleteTodoAdmin '{"id":"<todos id>"}'
+ */
+const deleteTodoFns = exposeMutation({
+  args: { id: v.id("todos") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (existing) await ctx.db.delete(id);
+  },
+});
+export const deleteTodo = deleteTodoFns.public;
+export const deleteTodoAdmin = deleteTodoFns.admin;
 
 // Persist a new ordering: order = index in the provided id list
 const reorderTodosFns = exposeMutation({
@@ -723,7 +773,30 @@ const upsertProjectFns = exposeMutation({
 export const upsertProject = upsertProjectFns.public;
 export const upsertProjectAdmin = upsertProjectFns.admin;
 
+/**
+ * Delete a single project. Use this to remove a duplicate row.
+ * Ids come from `npx convex run dashboard:getProjectsAdmin`.
+ * CLI: npx convex run dashboard:deleteProjectAdmin '{"id":"<projects id>"}'
+ */
+const deleteProjectFns = exposeMutation({
+  args: { id: v.id("projects") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (existing) await ctx.db.delete(id);
+  },
+});
+export const deleteProject = deleteProjectFns.public;
+export const deleteProjectAdmin = deleteProjectFns.admin;
+
 // ─── Calendar (vault-derived + manual events) ────────────────────────────────
+
+// A span's last day is never stored before its start. Empty means single-day.
+// Clamping (rather than swapping) matches the drag bug: the start moved forward
+// and the old end was left behind, so the event now lives on the new start day.
+function normalizeEventEnd(date: string, endDate: string | undefined): string | undefined {
+  if (!endDate) return undefined;
+  return endDate < date ? date : endDate;
+}
 
 const getCalendarEventsFns = exposeQuery({
   args: {},
@@ -737,7 +810,14 @@ export const getCalendarEventsAdmin = getCalendarEventsFns.admin;
 const addCalendarEventFns = exposeMutation({
   args: { date: v.string(), endDate: v.optional(v.string()), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
   handler: async (ctx, { date, endDate, title, note, link }) => {
-    await ctx.db.insert("calendarEvents", { date, endDate: endDate || undefined, title, note, link, source: "manual" });
+    await ctx.db.insert("calendarEvents", {
+      date,
+      endDate: normalizeEventEnd(date, endDate || undefined),
+      title,
+      note,
+      link,
+      source: "manual",
+    });
   },
 });
 export const addCalendarEvent = addCalendarEventFns.public;
@@ -807,10 +887,17 @@ const updateCalendarEventFns = exposeMutation({
     link: v.optional(v.string()),
   },
   handler: async (ctx, { id, date, endDate, title, note, link }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return;
+    const nextDate = date !== undefined ? date : existing.date;
+    // Empty string clears the multi-day span back to a single-day event.
+    const requestedEnd = endDate !== undefined ? endDate || undefined : existing.endDate;
+    const nextEnd = normalizeEventEnd(nextDate, requestedEnd);
     const patch: Record<string, unknown> = { source: "manual" };
     if (date !== undefined) patch.date = date;
-    // Empty string clears the multi-day span back to a single-day event.
-    if (endDate !== undefined) patch.endDate = endDate || undefined;
+    // Write the end when the caller set it, or when the new start would leave
+    // a stored endDate behind (drag of a same-day / already-inverted event).
+    if (endDate !== undefined || nextEnd !== existing.endDate) patch.endDate = nextEnd;
     if (title !== undefined) patch.title = title;
     if (note !== undefined) patch.note = note;
     if (link !== undefined) patch.link = link;
@@ -819,6 +906,26 @@ const updateCalendarEventFns = exposeMutation({
 });
 export const updateCalendarEvent = updateCalendarEventFns.public;
 export const updateCalendarEventAdmin = updateCalendarEventFns.admin;
+
+/**
+ * Clamp stored spans whose endDate is before date (end becomes the start day).
+ * Nothing is deleted. `dryRun` counts only.
+ * CLI: npx convex run dashboard:repairCalendarSpansAdmin '{"dryRun":true}'
+ *      npx convex run dashboard:repairCalendarSpansAdmin '{}'
+ */
+const repairCalendarSpansFns = exposeMutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { dryRun }) => {
+    const events = await ctx.db.query("calendarEvents").collect();
+    const inverted = events.filter((e) => !!e.endDate && e.endDate < e.date);
+    if (!dryRun) {
+      for (const e of inverted) await ctx.db.patch(e._id, { endDate: e.date });
+    }
+    return { matched: inverted.length, repaired: dryRun ? 0 : inverted.length, dryRun: !!dryRun };
+  },
+});
+export const repairCalendarSpans = repairCalendarSpansFns.public;
+export const repairCalendarSpansAdmin = repairCalendarSpansFns.admin;
 
 // Re-seed the vault-derived events (manual ones are left alone). Called by
 // scripts/sync-calendar.mjs after parsing the Obsidian vault.

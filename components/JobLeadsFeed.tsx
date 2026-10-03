@@ -2,9 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Search } from "lucide-react";
+import { Archive, ArchiveRestore, Search } from "lucide-react";
 
 const ACCENT = "#4a90c4";
 
@@ -37,9 +37,11 @@ type SourceFilter = "all" | "personal_outreach" | "digest_listing";
 
 export function JobLeadsFeed({ isDark = true }: { isDark?: boolean }) {
   const leads = useQuery(api.jobLeads.list, {});
+  const setArchived = useMutation(api.jobLeads.setArchived);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [source, setSource] = useState<SourceFilter>("all");
+  const [showArchived, setShowArchived] = useState(false);
 
   const textMain = isDark ? "text-white" : "text-black";
   const text40 = isDark ? "text-white/40" : "text-black/40";
@@ -52,14 +54,17 @@ export function JobLeadsFeed({ isDark = true }: { isDark?: boolean }) {
     return <div className={`text-sm ${text40}`}>Loading...</div>;
   }
 
-  const pendingCount = leads.filter((l) => l.status === "pending_approval").length;
+  const activeLeads = leads.filter((l) => !l.archived);
+  const archivedLeads = leads.filter((l) => !!l.archived);
+  const pendingCount = activeLeads.filter((l) => l.status === "pending_approval").length;
+  const pool = showArchived ? archivedLeads : activeLeads;
 
   const query = q.trim().toLowerCase();
   const statusMatches = (s: string) =>
     status === "all" ||
     (status === "sent" ? s === "sent" || s === "followed_up" : s === status);
 
-  const visible = [...leads]
+  const visible = [...pool]
     .filter(
       (l) =>
         statusMatches(l.status) &&
@@ -110,12 +115,18 @@ export function JobLeadsFeed({ isDark = true }: { isDark?: boolean }) {
         <div className="flex-1">
           <h2 className={`text-lg font-bold ${textMain}`}>Job Leads</h2>
           <p className={`text-xs ${text40}`}>
-            Scanned from Gmail by the JobKompass email agent
+            {showArchived
+              ? "Archived leads stay saved and are hidden from the dashboard counts"
+              : "Scanned from Gmail by the JobKompass email agent"}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-black" style={{ color: ACCENT }}>{leads.length}</p>
-          <p className={`text-[11px] ${text40}`}>{pendingCount} pending approval</p>
+          <p className="text-2xl font-black" style={{ color: ACCENT }}>
+            {showArchived ? archivedLeads.length : activeLeads.length}
+          </p>
+          <p className={`text-[11px] ${text40}`}>
+            {showArchived ? "archived" : `${pendingCount} pending approval`}
+          </p>
         </div>
       </div>
 
@@ -159,13 +170,25 @@ export function JobLeadsFeed({ isDark = true }: { isDark?: boolean }) {
             </button>
           ))}
         </div>
+        <div className="flex rounded-xl overflow-hidden shrink-0" style={{ border: rowBorder }}>
+          <button type="button" style={segBtn(!showArchived)} onClick={() => setShowArchived(false)}>
+            Active
+          </button>
+          <button type="button" style={segBtn(showArchived)} onClick={() => setShowArchived(true)}>
+            Archived{archivedLeads.length ? ` ${archivedLeads.length}` : ""}
+          </button>
+        </div>
       </div>
 
       {/* List */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5">
         {visible.length === 0 ? (
           <p className={`text-sm ${text40} py-6 text-center`}>
-            {leads.length === 0 ? "No job leads yet." : "Nothing matches that filter."}
+            {pool.length === 0
+              ? showArchived
+                ? "No archived leads."
+                : "No active job leads."
+              : "Nothing matches that filter."}
           </p>
         ) : (
           visible.map((lead) => {
@@ -198,6 +221,15 @@ export function JobLeadsFeed({ isDark = true }: { isDark?: boolean }) {
                     day: "numeric",
                   })}
                 </span>
+                <button
+                  type="button"
+                  className="shrink-0 p-1 rounded-lg"
+                  style={{ color: mutedText }}
+                  title={lead.archived ? "Unarchive" : "Archive (hides from dashboard counts)"}
+                  onClick={() => void setArchived({ id: lead._id, archived: !lead.archived })}
+                >
+                  {lead.archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
+                </button>
               </div>
             );
           })
