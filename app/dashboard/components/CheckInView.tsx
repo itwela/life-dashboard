@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { ChevronLeft, ChevronRight, X, Sparkles } from "lucide-react";
 
@@ -73,6 +73,7 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
 
   const allCheckIns = useQuery(api.checkIns.list) ?? [];
   const addCheckIn  = useMutation(api.checkIns.add);
+  const polishJournal = useAction(api.aiAssistant.polishJournal);
 
   const checkInByDate = useMemo(() => {
     const m: Record<string, typeof allCheckIns[0]> = {};
@@ -165,21 +166,8 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
     if (!journal.trim() || isPolishing) return;
     setIsPolishing(true);
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "arcee-ai/trinity-large-preview:free",
-          messages: [
-            { role: "system", content: "Fix grammar, punctuation, and capitalization. Keep voice/tone/meaning exactly. Return only cleaned text." },
-            { role: "user", content: journal },
-          ],
-          temperature: 0.1, max_tokens: 1000,
-        }),
-      });
-      const data = await res.json();
-      const cleaned = data.choices?.[0]?.message?.content?.trim();
-      if (cleaned) setJournal(cleaned);
+      const result = await polishJournal({ text: journal });
+      if (result.text) setJournal(result.text);
     } catch { /* silently fail */ }
     finally { setIsPolishing(false); }
   }

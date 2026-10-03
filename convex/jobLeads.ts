@@ -1,6 +1,14 @@
 // convex/jobLeads.ts (life-dashboard)
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
+import { exposeQuery } from "./expose";
+
+// `list` is the UI query (allowlisted Clerk user). CLI: `npx convex run jobLeads:listAdmin`.
+// upsertFromSync / deleteBySourceId / purgeAll stay internal — the /jobLeads/sync
+// HTTP action calls them after checking X-Sync-Key, and the CLI can run them directly.
+// New UI mutations (archive, etc.): use exposeMutation from ./expose and export both
+// `name` (public, UI) and `nameAdmin` (internal, `npx convex run jobLeads:nameAdmin`).
+// Do not add a raw `mutation()` / `query()`.
 
 export const upsertFromSync = internalMutation({
   args: {
@@ -28,12 +36,14 @@ export const upsertFromSync = internalMutation({
   },
 });
 
-export const list = query({
+const listFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("jobLeads").collect();
   },
 });
+export const list = listFns.public;
+export const listAdmin = listFns.admin;
 
 export const deleteBySourceId = internalMutation({
   args: { sourceLeadId: v.string() },

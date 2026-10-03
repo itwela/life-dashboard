@@ -1,16 +1,25 @@
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { exposeMutation, exposeQuery } from "./expose";
+
+// Auth: every public function below is an exposeQuery / exposeMutation pair.
+// The UI keeps calling `api.dashboard.<name>`. The CLI uses the internal twin:
+//   npx convex run dashboard:<name>Admin '<json args>'
+// New mutations must use exposeMutation (see convex/expose.ts). A raw `mutation()`
+// is reachable by anyone who knows the Convex URL.
 
 // ─── Queries ───────────────────────────────────────────────────────────────
 
-export const getAccounts = query({
+const getAccountsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("accounts").collect();
   },
 });
+export const getAccounts = getAccountsFns.public;
+export const getAccountsAdmin = getAccountsFns.admin;
 
-export const getTransactions = query({
+const getTransactionsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db
@@ -20,8 +29,10 @@ export const getTransactions = query({
       .take(30);
   },
 });
+export const getTransactions = getTransactionsFns.public;
+export const getTransactionsAdmin = getTransactionsFns.admin;
 
-export const getFinanceFiles = query({
+const getFinanceFilesFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     const files = await ctx.db
@@ -37,30 +48,38 @@ export const getFinanceFiles = query({
     );
   },
 });
+export const getFinanceFiles = getFinanceFilesFns.public;
+export const getFinanceFilesAdmin = getFinanceFilesFns.admin;
 
-export const getCourses = query({
+const getCoursesFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("courses").collect();
   },
 });
+export const getCourses = getCoursesFns.public;
+export const getCoursesAdmin = getCoursesFns.admin;
 
-export const getSchoolProgress = query({
+const getSchoolProgressFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     const doc = await ctx.db.query("schoolProgress").first();
     return doc;
   },
 });
+export const getSchoolProgress = getSchoolProgressFns.public;
+export const getSchoolProgressAdmin = getSchoolProgressFns.admin;
 
-export const getBooks = query({
+const getBooksFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("books").collect();
   },
 });
+export const getBooks = getBooksFns.public;
+export const getBooksAdmin = getBooksFns.admin;
 
-export const getWorkouts = query({
+const getWorkoutsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db
@@ -70,36 +89,46 @@ export const getWorkouts = query({
       .take(30);
   },
 });
+export const getWorkouts = getWorkoutsFns.public;
+export const getWorkoutsAdmin = getWorkoutsFns.admin;
 
-export const getWorkoutSchedule = query({
+const getWorkoutScheduleFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     const doc = await ctx.db.query("workoutSchedule").first();
     return doc?.scheduleDays ?? [0, 2, 4, 5]; // default Sun, Tue, Thu, Fri
   },
 });
+export const getWorkoutSchedule = getWorkoutScheduleFns.public;
+export const getWorkoutScheduleAdmin = getWorkoutScheduleFns.admin;
 
-export const getWorkoutMissedDays = query({
+const getWorkoutMissedDaysFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     const docs = await ctx.db.query("workoutMissedDays").collect();
     return docs.map((d) => d.date);
   },
 });
+export const getWorkoutMissedDays = getWorkoutMissedDaysFns.public;
+export const getWorkoutMissedDaysAdmin = getWorkoutMissedDaysFns.admin;
 
-export const getContentPosts = query({
+const getContentPostsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("contentPosts").collect();
   },
 });
+export const getContentPosts = getContentPostsFns.public;
+export const getContentPostsAdmin = getContentPostsFns.admin;
 
-export const getProjects = query({
+const getProjectsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("projects").collect();
   },
 });
+export const getProjects = getProjectsFns.public;
+export const getProjectsAdmin = getProjectsFns.admin;
 
 // ─── Internal (AI finance dump) ─────────────────────────────────────────────
 
@@ -139,15 +168,17 @@ export const upsertAccountsFromDump = internalMutation({
 
 // ─── Mutations ─────────────────────────────────────────────────────────────
 
-export const generateUploadUrl = mutation({
+const generateUploadUrlFns = exposeMutation({
   args: {},
   handler: async (ctx) => {
     return await ctx.storage.generateUploadUrl();
   },
 });
+export const generateUploadUrl = generateUploadUrlFns.public;
+export const generateUploadUrlAdmin = generateUploadUrlFns.admin;
 
 // ── Profile avatar (uploadable, circular crop transform) ──
-export const getProfile = query({
+const getProfileFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     const p = await ctx.db.query("profile").first();
@@ -155,8 +186,10 @@ export const getProfile = query({
     return { ...p, avatarUrl: p.avatarStorageId ? await ctx.storage.getUrl(p.avatarStorageId) : null };
   },
 });
+export const getProfile = getProfileFns.public;
+export const getProfileAdmin = getProfileFns.admin;
 
-export const setAvatar = mutation({
+const setAvatarFns = exposeMutation({
   args: { avatarStorageId: v.id("_storage"), scale: v.number(), tx: v.number(), ty: v.number() },
   handler: async (ctx, args) => {
     const p = await ctx.db.query("profile").first();
@@ -170,25 +203,31 @@ export const setAvatar = mutation({
     }
   },
 });
+export const setAvatar = setAvatarFns.public;
+export const setAvatarAdmin = setAvatarFns.admin;
 
-export const updateAvatarTransform = mutation({
+const updateAvatarTransformFns = exposeMutation({
   args: { scale: v.number(), tx: v.number(), ty: v.number() },
   handler: async (ctx, args) => {
     const p = await ctx.db.query("profile").first();
     if (p) await ctx.db.patch(p._id, args);
   },
 });
+export const updateAvatarTransform = updateAvatarTransformFns.public;
+export const updateAvatarTransformAdmin = updateAvatarTransformFns.admin;
 
 // ── Records / documents (diploma, certs, IDs — personal record vault) ──
-export const getDocuments = query({
+const getDocumentsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     const docs = await ctx.db.query("documents").withIndex("by_added").order("desc").collect();
     return Promise.all(docs.map(async (d) => ({ ...d, url: await ctx.storage.getUrl(d.storageId) })));
   },
 });
+export const getDocuments = getDocumentsFns.public;
+export const getDocumentsAdmin = getDocumentsFns.admin;
 
-export const saveDocument = mutation({
+const saveDocumentFns = exposeMutation({
   args: {
     title: v.string(),
     category: v.optional(v.string()),
@@ -201,8 +240,10 @@ export const saveDocument = mutation({
     await ctx.db.insert("documents", { ...args, addedAt: Date.now() });
   },
 });
+export const saveDocument = saveDocumentFns.public;
+export const saveDocumentAdmin = saveDocumentFns.admin;
 
-export const updateDocument = mutation({
+const updateDocumentFns = exposeMutation({
   args: {
     id: v.id("documents"),
     title: v.optional(v.string()),
@@ -213,8 +254,10 @@ export const updateDocument = mutation({
     await ctx.db.patch(id, patch);
   },
 });
+export const updateDocument = updateDocumentFns.public;
+export const updateDocumentAdmin = updateDocumentFns.admin;
 
-export const deleteDocument = mutation({
+const deleteDocumentFns = exposeMutation({
   args: { id: v.id("documents") },
   handler: async (ctx, { id }) => {
     const doc = await ctx.db.get(id);
@@ -224,8 +267,10 @@ export const deleteDocument = mutation({
     }
   },
 });
+export const deleteDocument = deleteDocumentFns.public;
+export const deleteDocumentAdmin = deleteDocumentFns.admin;
 
-export const saveFinanceFile = mutation({
+const saveFinanceFileFns = exposeMutation({
   args: {
     name: v.string(),
     storageId: v.id("_storage"),
@@ -240,8 +285,10 @@ export const saveFinanceFile = mutation({
     });
   },
 });
+export const saveFinanceFile = saveFinanceFileFns.public;
+export const saveFinanceFileAdmin = saveFinanceFileFns.admin;
 
-export const deleteFinanceFile = mutation({
+const deleteFinanceFileFns = exposeMutation({
   args: { id: v.id("financeFiles") },
   handler: async (ctx, { id }) => {
     const doc = await ctx.db.get(id);
@@ -251,8 +298,10 @@ export const deleteFinanceFile = mutation({
     }
   },
 });
+export const deleteFinanceFile = deleteFinanceFileFns.public;
+export const deleteFinanceFileAdmin = deleteFinanceFileFns.admin;
 
-export const upsertAccount = mutation({
+const upsertAccountFns = exposeMutation({
   args: {
     id: v.optional(v.id("accounts")),
     name: v.string(),
@@ -276,8 +325,10 @@ export const upsertAccount = mutation({
     }
   },
 });
+export const upsertAccount = upsertAccountFns.public;
+export const upsertAccountAdmin = upsertAccountFns.admin;
 
-export const addTransaction = mutation({
+const addTransactionFns = exposeMutation({
   args: {
     label: v.string(),
     amount: v.number(),
@@ -294,8 +345,10 @@ export const addTransaction = mutation({
     });
   },
 });
+export const addTransaction = addTransactionFns.public;
+export const addTransactionAdmin = addTransactionFns.admin;
 
-export const upsertCourse = mutation({
+const upsertCourseFns = exposeMutation({
   args: {
     id: v.optional(v.id("courses")),
     name: v.string(),
@@ -328,8 +381,10 @@ export const upsertCourse = mutation({
     }
   },
 });
+export const upsertCourse = upsertCourseFns.public;
+export const upsertCourseAdmin = upsertCourseFns.admin;
 
-export const setSchoolProgress = mutation({
+const setSchoolProgressFns = exposeMutation({
   args: {
     totalCU: v.number(),
     earnedCU: v.number(),
@@ -348,6 +403,8 @@ export const setSchoolProgress = mutation({
     }
   },
 });
+export const setSchoolProgress = setSchoolProgressFns.public;
+export const setSchoolProgressAdmin = setSchoolProgressFns.admin;
 
 // One-click seed for a new Convex project: your WGU courses + default school progress
 const WGU_COURSES_SEED: { name: string; creditUnits: number; status: "completed" | "in_progress" | "not_started" }[] = [
@@ -392,7 +449,7 @@ const WGU_COURSES_SEED: { name: string; creditUnits: number; status: "completed"
   { name: "Software Engineering Capstone – D424", creditUnits: 4, status: "not_started" },
 ];
 
-export const seedSchoolData = mutation({
+const seedSchoolDataFns = exposeMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
@@ -423,8 +480,10 @@ export const seedSchoolData = mutation({
     return { courses: WGU_COURSES_SEED.length };
   },
 });
+export const seedSchoolData = seedSchoolDataFns.public;
+export const seedSchoolDataAdmin = seedSchoolDataFns.admin;
 
-export const upsertBook = mutation({
+const upsertBookFns = exposeMutation({
   args: {
     id: v.optional(v.id("books")),
     title: v.string(),
@@ -457,17 +516,21 @@ export const upsertBook = mutation({
     }
   },
 });
+export const upsertBook = upsertBookFns.public;
+export const upsertBookAdmin = upsertBookFns.admin;
 
 // ─── Todos (synced from the Obsidian vault Hub) ─────────────────────────────
 
-export const getTodos = query({
+const getTodosFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("todos").withIndex("by_order").collect();
   },
 });
+export const getTodos = getTodosFns.public;
+export const getTodosAdmin = getTodosFns.admin;
 
-export const seedTodos = mutation({
+const seedTodosFns = exposeMutation({
   args: {
     todos: v.array(
       v.object({
@@ -485,15 +548,19 @@ export const seedTodos = mutation({
     return { count: todos.length };
   },
 });
+export const seedTodos = seedTodosFns.public;
+export const seedTodosAdmin = seedTodosFns.admin;
 
-export const toggleTodo = mutation({
+const toggleTodoFns = exposeMutation({
   args: { id: v.id("todos"), done: v.boolean() },
   handler: async (ctx, { id, done }) => {
     await ctx.db.patch(id, { done });
   },
 });
+export const toggleTodo = toggleTodoFns.public;
+export const toggleTodoAdmin = toggleTodoFns.admin;
 
-export const addTodo = mutation({
+const addTodoFns = exposeMutation({
   args: { text: v.string(), category: v.string() },
   handler: async (ctx, { text, category }) => {
     const all = await ctx.db.query("todos").withIndex("by_order").collect();
@@ -501,9 +568,11 @@ export const addTodo = mutation({
     await ctx.db.insert("todos", { text, category, done: false, order: maxOrder + 1 });
   },
 });
+export const addTodo = addTodoFns.public;
+export const addTodoAdmin = addTodoFns.admin;
 
 // Persist a new ordering: order = index in the provided id list
-export const reorderTodos = mutation({
+const reorderTodosFns = exposeMutation({
   args: { ids: v.array(v.id("todos")) },
   handler: async (ctx, { ids }) => {
     for (let i = 0; i < ids.length; i++) {
@@ -511,8 +580,10 @@ export const reorderTodos = mutation({
     }
   },
 });
+export const reorderTodos = reorderTodosFns.public;
+export const reorderTodosAdmin = reorderTodosFns.admin;
 
-export const logWorkout = mutation({
+const logWorkoutFns = exposeMutation({
   args: {
     exerciseType: v.string(),
     duration: v.number(),
@@ -529,8 +600,10 @@ export const logWorkout = mutation({
     });
   },
 });
+export const logWorkout = logWorkoutFns.public;
+export const logWorkoutAdmin = logWorkoutFns.admin;
 
-export const setWorkoutSchedule = mutation({
+const setWorkoutScheduleFns = exposeMutation({
   args: {
     scheduleDays: v.array(v.number()),
   },
@@ -544,8 +617,10 @@ export const setWorkoutSchedule = mutation({
     }
   },
 });
+export const setWorkoutSchedule = setWorkoutScheduleFns.public;
+export const setWorkoutScheduleAdmin = setWorkoutScheduleFns.admin;
 
-export const addMissedDay = mutation({
+const addMissedDayFns = exposeMutation({
   args: { date: v.number() },
   handler: async (ctx, { date }) => {
     const existing = await ctx.db
@@ -555,8 +630,10 @@ export const addMissedDay = mutation({
     if (!existing) await ctx.db.insert("workoutMissedDays", { date });
   },
 });
+export const addMissedDay = addMissedDayFns.public;
+export const addMissedDayAdmin = addMissedDayFns.admin;
 
-export const removeMissedDay = mutation({
+const removeMissedDayFns = exposeMutation({
   args: { date: v.number() },
   handler: async (ctx, { date }) => {
     const doc = await ctx.db
@@ -566,8 +643,10 @@ export const removeMissedDay = mutation({
     if (doc) await ctx.db.delete(doc._id);
   },
 });
+export const removeMissedDay = removeMissedDayFns.public;
+export const removeMissedDayAdmin = removeMissedDayFns.admin;
 
-export const addContentPost = mutation({
+const addContentPostFns = exposeMutation({
   args: {
     title: v.string(),
     platform: v.string(),
@@ -593,8 +672,10 @@ export const addContentPost = mutation({
     });
   },
 });
+export const addContentPost = addContentPostFns.public;
+export const addContentPostAdmin = addContentPostFns.admin;
 
-export const updateContentPost = mutation({
+const updateContentPostFns = exposeMutation({
   args: {
     id: v.id("contentPosts"),
     status: v.union(
@@ -615,8 +696,10 @@ export const updateContentPost = mutation({
     });
   },
 });
+export const updateContentPost = updateContentPostFns.public;
+export const updateContentPostAdmin = updateContentPostFns.admin;
 
-export const upsertProject = mutation({
+const upsertProjectFns = exposeMutation({
   args: {
     id: v.optional(v.id("projects")),
     name: v.string(),
@@ -637,25 +720,31 @@ export const upsertProject = mutation({
     }
   },
 });
+export const upsertProject = upsertProjectFns.public;
+export const upsertProjectAdmin = upsertProjectFns.admin;
 
 // ─── Calendar (vault-derived + manual events) ────────────────────────────────
 
-export const getCalendarEvents = query({
+const getCalendarEventsFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("calendarEvents").withIndex("by_date").collect();
   },
 });
+export const getCalendarEvents = getCalendarEventsFns.public;
+export const getCalendarEventsAdmin = getCalendarEventsFns.admin;
 
-export const addCalendarEvent = mutation({
+const addCalendarEventFns = exposeMutation({
   args: { date: v.string(), endDate: v.optional(v.string()), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
   handler: async (ctx, { date, endDate, title, note, link }) => {
     await ctx.db.insert("calendarEvents", { date, endDate: endDate || undefined, title, note, link, source: "manual" });
   },
 });
+export const addCalendarEvent = addCalendarEventFns.public;
+export const addCalendarEventAdmin = addCalendarEventFns.admin;
 
 // Bulk insert (recurring events / habits) — one call instead of N.
-export const addCalendarEventsBulk = mutation({
+const addCalendarEventsBulkFns = exposeMutation({
   args: {
     events: v.array(v.object({
       date: v.string(),
@@ -671,23 +760,29 @@ export const addCalendarEventsBulk = mutation({
     return { inserted: events.length };
   },
 });
+export const addCalendarEventsBulk = addCalendarEventsBulkFns.public;
+export const addCalendarEventsBulkAdmin = addCalendarEventsBulkFns.admin;
 
-export const deleteCalendarEvent = mutation({
+const deleteCalendarEventFns = exposeMutation({
   args: { id: v.id("calendarEvents") },
   handler: async (ctx, { id }) => {
     await ctx.db.delete(id);
   },
 });
+export const deleteCalendarEvent = deleteCalendarEventFns.public;
+export const deleteCalendarEventAdmin = deleteCalendarEventFns.admin;
 
 // Mark an event done/undone. It stays on the calendar (struck through) either way.
-export const setCalendarEventDone = mutation({
+const setCalendarEventDoneFns = exposeMutation({
   args: { id: v.id("calendarEvents"), done: v.boolean() },
   handler: async (ctx, { id, done }) => {
     await ctx.db.patch(id, { done });
   },
 });
+export const setCalendarEventDone = setCalendarEventDoneFns.public;
+export const setCalendarEventDoneAdmin = setCalendarEventDoneFns.admin;
 
-export const setCalendarEventStatus = mutation({
+const setCalendarEventStatusFns = exposeMutation({
   args: {
     id: v.id("calendarEvents"),
     status: v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done")),
@@ -697,10 +792,12 @@ export const setCalendarEventStatus = mutation({
     await ctx.db.patch(id, { status, done: status === "done" });
   },
 });
+export const setCalendarEventStatus = setCalendarEventStatusFns.public;
+export const setCalendarEventStatusAdmin = setCalendarEventStatusFns.admin;
 
 // Edit an event: change its day (drag-drop reschedule) and/or its text. A vault-derived
 // event that gets edited becomes "manual" so the next sync doesn't wipe the change.
-export const updateCalendarEvent = mutation({
+const updateCalendarEventFns = exposeMutation({
   args: {
     id: v.id("calendarEvents"),
     date: v.optional(v.string()),
@@ -720,10 +817,12 @@ export const updateCalendarEvent = mutation({
     await ctx.db.patch(id, patch);
   },
 });
+export const updateCalendarEvent = updateCalendarEventFns.public;
+export const updateCalendarEventAdmin = updateCalendarEventFns.admin;
 
 // Re-seed the vault-derived events (manual ones are left alone). Called by
 // scripts/sync-calendar.mjs after parsing the Obsidian vault.
-export const seedCalendarEvents = mutation({
+const seedCalendarEventsFns = exposeMutation({
   args: {
     events: v.array(
       v.object({
@@ -751,3 +850,5 @@ export const seedCalendarEvents = mutation({
     return { count: events.length };
   },
 });
+export const seedCalendarEvents = seedCalendarEventsFns.public;
+export const seedCalendarEventsAdmin = seedCalendarEventsFns.admin;

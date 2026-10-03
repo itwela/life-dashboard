@@ -1,8 +1,9 @@
 "use node";
 
-import { action } from "./_generated/server";
+import { action, internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { requireAllowedUser } from "./requireUser";
 
 const ACCOUNT_TYPES = ["checking", "savings", "investment", "debt", "other"] as const;
 
@@ -14,12 +15,15 @@ const SYSTEM_PROMPT = `You extract financial accounts and debts from casual text
 - "bofa checking has 3000, discover card debt 500" -> [{"name":"BofA checking","type":"checking","balance":3000},{"name":"Discover card","type":"debt","balance":500}]
 Return only the JSON array, no other text.`;
 
-export const parseFinanceDump = action({
-  args: {
-    text: v.string(),
-    model: v.optional(v.string()),
-  },
-  handler: async (ctx, { text, model: modelArg }): Promise<{ updated: number; message?: string }> => {
+const parseFinanceDumpArgs = {
+  text: v.string(),
+  model: v.optional(v.string()),
+};
+
+async function parseFinanceDumpHandler(
+  ctx: ActionCtx,
+  { text, model: modelArg }: { text: string; model?: string }
+): Promise<{ updated: number; message?: string }> {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return { updated: 0, message: "OpenRouter API key not set. Add OPENROUTER_API_KEY in Convex dashboard → Environment Variables." };
@@ -41,8 +45,7 @@ export const parseFinanceDump = action({
       }),
     });
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`OpenRouter API error: ${res.status} ${err}`);
+      throw new Error(`OpenRouter API error: ${res.status}`);
     }
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = data.choices?.[0]?.message?.content?.trim();
@@ -74,5 +77,18 @@ export const parseFinanceDump = action({
     }
     const updated = await ctx.runMutation(internal.dashboard.upsertAccountsFromDump, { accounts });
     return { updated, message: `Updated ${updated} account(s).` };
+}
+
+export const parseFinanceDump = action({
+  args: parseFinanceDumpArgs,
+  handler: async (ctx, args) => {
+    await requireAllowedUser(ctx);
+    return await parseFinanceDumpHandler(ctx, args);
   },
+});
+
+// CLI: npx convex run financeDump:parseFinanceDumpAdmin '{"text":"Chase checking 500"}'
+export const parseFinanceDumpAdmin = internalAction({
+  args: parseFinanceDumpArgs,
+  handler: parseFinanceDumpHandler,
 });

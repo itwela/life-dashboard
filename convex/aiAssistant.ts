@@ -1,9 +1,9 @@
 "use node";
 
-import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { action, internalAction, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { requireAllowedUser } from "./requireUser";
 
 const DEFAULT_MODEL = "arcee-ai/trinity-large-preview:free";
 
@@ -27,14 +27,17 @@ Today's date for "today" or "this morning": use current day start in UTC for dat
 
 type ActionItem = { action: string; payload: Record<string, unknown> };
 
-export const expandContentIdea = action({
-  args: {
-    title: v.string(),
-    platform: v.string(),
-    type: v.string(),
-    brainstorm: v.string(),
-  },
-  handler: async (ctx, { title, platform, type, brainstorm }): Promise<{ betterTitle: string; plan: string }> => {
+const expandContentIdeaArgs = {
+  title: v.string(),
+  platform: v.string(),
+  type: v.string(),
+  brainstorm: v.string(),
+};
+
+async function expandContentIdeaHandler(
+  _ctx: unknown,
+  { title, platform, type, brainstorm }: { title: string; platform: string; type: string; brainstorm: string }
+): Promise<{ betterTitle: string; plan: string }> {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OpenRouter API key not set.");
 
@@ -73,15 +76,31 @@ Respond with ONLY valid JSON, no markdown fences:
     const json = content.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
     const parsed = JSON.parse(json) as { betterTitle?: string; plan?: string };
     return { betterTitle: parsed.betterTitle ?? title, plan: parsed.plan ?? "" };
+}
+
+export const expandContentIdea = action({
+  args: expandContentIdeaArgs,
+  handler: async (ctx, args) => {
+    await requireAllowedUser(ctx);
+    return await expandContentIdeaHandler(ctx, args);
   },
 });
 
-export const chat = action({
-  args: {
-    message: v.string(),
-    model: v.optional(v.string()),
-  },
-  handler: async (ctx, { message, model: modelArg }): Promise<{ success: boolean; text: string }> => {
+// CLI: npx convex run aiAssistant:expandContentIdeaAdmin '{"title":"...","platform":"...","type":"...","brainstorm":"..."}'
+export const expandContentIdeaAdmin = internalAction({
+  args: expandContentIdeaArgs,
+  handler: expandContentIdeaHandler,
+});
+
+const chatArgs = {
+  message: v.string(),
+  model: v.optional(v.string()),
+};
+
+async function chatHandler(
+  ctx: ActionCtx,
+  { message, model: modelArg }: { message: string; model?: string }
+): Promise<{ success: boolean; text: string }> {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return { success: false, text: "OpenRouter API key not set. Add OPENROUTER_API_KEY in Convex → Environment Variables." };
@@ -103,8 +122,7 @@ export const chat = action({
       }),
     });
     if (!res.ok) {
-      const err = await res.text();
-      return { success: false, text: `OpenRouter error: ${res.status} ${err.slice(0, 200)}` };
+      return { success: false, text: `OpenRouter error: ${res.status}` };
     }
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = data.choices?.[0]?.message?.content?.trim();
@@ -124,7 +142,7 @@ export const chat = action({
         switch (act) {
           case "add_workout": {
             const p = payload as { exerciseType?: string; duration?: number; notes?: string; date?: number };
-            await ctx.runMutation(api.dashboard.logWorkout, {
+            await ctx.runMutation(internal.dashboard.logWorkoutAdmin, {
               exerciseType: String(p.exerciseType ?? "Workout"),
               duration: Number(p.duration) || 0,
               notes: p.notes != null ? String(p.notes) : undefined,
@@ -137,7 +155,7 @@ export const chat = action({
             const p = payload as { name?: string; type?: string; balance?: number; investmentType?: string };
             const type = ["checking", "savings", "investment", "debt", "other"].includes(String(p.type)) ? p.type : "other";
             const invType = ["brokerage", "401k", "ira", "crypto", "other"].includes(String(p.investmentType)) ? p.investmentType : undefined;
-            await ctx.runMutation(api.dashboard.upsertAccount, {
+            await ctx.runMutation(internal.dashboard.upsertAccountAdmin, {
               name: String(p.name ?? "Account"),
               type: type as "checking" | "savings" | "investment" | "debt" | "other",
               balance: Number(p.balance) || 0,
@@ -149,7 +167,7 @@ export const chat = action({
           case "add_transaction": {
             const p = payload as { label?: string; amount?: number; type?: string; category?: string };
             const txType = p.type === "income" ? "income" : "expense";
-            await ctx.runMutation(api.dashboard.addTransaction, {
+            await ctx.runMutation(internal.dashboard.addTransactionAdmin, {
               label: String(p.label ?? ""),
               amount: Number(p.amount) || 0,
               type: txType,
@@ -161,7 +179,7 @@ export const chat = action({
           case "add_book": {
             const p = payload as { title?: string; author?: string; status?: string; notes?: string };
             const status = ["want_to_read", "reading", "completed"].includes(String(p.status)) ? p.status : "want_to_read";
-            await ctx.runMutation(api.dashboard.upsertBook, {
+            await ctx.runMutation(internal.dashboard.upsertBookAdmin, {
               title: String(p.title ?? "Untitled"),
               author: String(p.author ?? "Unknown"),
               status: status as "want_to_read" | "reading" | "completed",
@@ -174,7 +192,7 @@ export const chat = action({
             const p = payload as { title?: string; platform?: string; type?: string; status?: string };
             const type = ["beat", "video", "article", "other"].includes(String(p.type)) ? p.type : "other";
             const status = ["idea", "in_progress", "published"].includes(String(p.status)) ? p.status : "idea";
-            await ctx.runMutation(api.dashboard.addContentPost, {
+            await ctx.runMutation(internal.dashboard.addContentPostAdmin, {
               title: String(p.title ?? ""),
               platform: String(p.platform ?? "Other"),
               type: type as "beat" | "video" | "article" | "other",
@@ -186,7 +204,7 @@ export const chat = action({
           case "add_project": {
             const p = payload as { name?: string; description?: string; status?: string; revenue?: number; notes?: string };
             const status = ["active", "paused", "shipped"].includes(String(p.status)) ? p.status : "active";
-            await ctx.runMutation(api.dashboard.upsertProject, {
+            await ctx.runMutation(internal.dashboard.upsertProjectAdmin, {
               name: String(p.name ?? "Project"),
               description: p.description != null ? String(p.description) : undefined,
               status: status as "active" | "paused" | "shipped",
@@ -198,7 +216,7 @@ export const chat = action({
           }
           case "set_school_progress": {
             const p = payload as { totalCU?: number; earnedCU?: number; activeCount?: number; termsCompleted?: number; termsTotal?: number };
-            await ctx.runMutation(api.dashboard.setSchoolProgress, {
+            await ctx.runMutation(internal.dashboard.setSchoolProgressAdmin, {
               totalCU: Number(p.totalCU) || 120,
               earnedCU: Number(p.earnedCU) || 0,
               activeCount: Number(p.activeCount) || 0,
@@ -212,7 +230,7 @@ export const chat = action({
             const p = payload as { date?: number };
             const date = Number(p.date);
             if (Number.isFinite(date)) {
-              await ctx.runMutation(api.dashboard.addMissedDay, { date });
+              await ctx.runMutation(internal.dashboard.addMissedDayAdmin, { date });
               results.push("Marked day as missed.");
             }
             break;
@@ -221,7 +239,7 @@ export const chat = action({
             const p = payload as { date?: number };
             const date = Number(p.date);
             if (Number.isFinite(date)) {
-              await ctx.runMutation(api.dashboard.removeMissedDay, { date });
+              await ctx.runMutation(internal.dashboard.removeMissedDayAdmin, { date });
               results.push("Unmarked missed day.");
             }
             break;
@@ -262,5 +280,64 @@ export const chat = action({
       return { success: true, text: "No actions taken. Try being specific: 'Log 30 min run', 'Add savings account $2000'." };
     }
     return { success: true, text: results.join("\n") };
+}
+
+export const chat = action({
+  args: chatArgs,
+  handler: async (ctx, args) => {
+    await requireAllowedUser(ctx);
+    return await chatHandler(ctx, args);
   },
+});
+
+// CLI: npx convex run aiAssistant:chatAdmin '{"message":"Log a 30 min run"}'
+export const chatAdmin = internalAction({
+  args: chatArgs,
+  handler: chatHandler,
+});
+
+const polishJournalArgs = {
+  text: v.string(),
+};
+
+// Grammar polish for the Check-In journal. The browser used to call OpenRouter
+// with NEXT_PUBLIC_OPENROUTER_API_KEY; the key stays in Convex as OPENROUTER_API_KEY.
+async function polishJournalHandler(
+  _ctx: ActionCtx,
+  { text }: { text: string }
+): Promise<{ text: string }> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OpenRouter API key not set.");
+  const model = process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: "Fix grammar, punctuation, and capitalization. Keep voice/tone/meaning exactly. Return only cleaned text." },
+        { role: "user", content: text },
+      ],
+      temperature: 0.1,
+      max_tokens: 1000,
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenRouter error: ${res.status}`);
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const cleaned = data.choices?.[0]?.message?.content?.trim();
+  if (!cleaned) throw new Error("No response from model.");
+  return { text: cleaned };
+}
+
+export const polishJournal = action({
+  args: polishJournalArgs,
+  handler: async (ctx, args) => {
+    await requireAllowedUser(ctx);
+    return await polishJournalHandler(ctx, args);
+  },
+});
+
+export const polishJournalAdmin = internalAction({
+  args: polishJournalArgs,
+  handler: polishJournalHandler,
 });
