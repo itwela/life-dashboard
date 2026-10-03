@@ -144,7 +144,7 @@ export default defineSchema({
   // which wipes source="vault" rows) plus manual ones added from the UI/agent.
   calendarEvents: defineTable({
     date: v.string(), // "YYYY-MM-DD" — start day
-    endDate: v.optional(v.string()), // "YYYY-MM-DD" — last day; when set and > date, the event is multi-day and draws as a spanning bar
+    endDate: v.optional(v.string()), // "YYYY-MM-DD" — last day; writers clamp this so it is never before `date`. When set and > date, the event draws as a spanning bar
     title: v.string(),
     source: v.union(v.literal("vault"), v.literal("manual")),
     note: v.optional(v.string()), // full detail (time, who, confirmation #, etc.)
@@ -163,7 +163,9 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_date", ["date"]),
 
-  // Read-only mirror of JobKompass job leads, synced via the /jobLeads/sync HTTP endpoint.
+  // Mirror of JobKompass job leads, synced via POST /jobLeads/sync.
+  // `archived` / `archivedAt` are local-only. The sync upsert never sets or clears them,
+  // so a resync cannot un-archive a lead. Archived rows stay in the table.
   jobLeads: defineTable({
     sourceLeadId: v.string(), // the jobLeads _id from jobkompass-v3, used as the upsert key
     company: v.string(),
@@ -174,5 +176,7 @@ export default defineSchema({
     emailReceivedAt: v.optional(v.number()), // when the email arrived in Gmail
     accountEmail: v.optional(v.string()), // which connected inbox received it
     updatedAt: v.number(),
+    archived: v.optional(v.boolean()),
+    archivedAt: v.optional(v.number()),
   }).index("by_source_lead", ["sourceLeadId"]),
 });

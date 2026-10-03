@@ -193,10 +193,15 @@ export default function CalendarView({
     if (!payload) return;
     if (payload.kind === "event") {
       const ev = events.find((x) => x._id === payload.id);
-      if (ev && isMultiDay(ev)) {
-        // Move the whole span: shift the end date by the same number of days as the start.
+      if (!ev) return;
+      if (ev.endDate) {
+        // Shift the stored end with the start, including same-day ends.
+        // Only shifting strict multi-day spans (endDate > date) left the old
+        // end behind, so dragging Aug 16 → Aug 18 stored endDate before date.
         const delta = diffDays(ev.date, date);
-        await updateEvent({ id: payload.id, date, endDate: addDaysStr(ev.endDate as string, delta) });
+        const shiftedEnd = addDaysStr(ev.endDate, delta);
+        const endDate = shiftedEnd < date ? date : shiftedEnd;
+        await updateEvent({ id: payload.id, date, endDate });
       } else {
         await updateEvent({ id: payload.id, date });
       }
@@ -542,7 +547,12 @@ export default function CalendarView({
                           value={e.endDate ?? ""}
                           min={e.date}
                           onClick={(ev) => ev.stopPropagation()}
-                          onChange={(ev) => updateEvent({ id: e._id, endDate: ev.target.value })}
+                          onChange={(ev) => {
+                            const value = ev.target.value;
+                            // "" clears the span. An end before the start is clamped up to the start.
+                            const endDate = value && value < e.date ? e.date : value;
+                            updateEvent({ id: e._id, endDate });
+                          }}
                           className="text-[11px] px-1.5 py-0.5 rounded outline-none"
                           style={{ background: isDark ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.9)", border: rowBorder, color: mutedText }}
                         />
