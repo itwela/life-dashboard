@@ -1,6 +1,13 @@
 // convex/jobLeads.ts (life-dashboard)
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
+import { exposeMutation, exposeQuery } from "./expose";
+
+// `list`, `setArchived`, and `archiveStale` require an allowlisted Clerk user.
+// CLI: npx convex run jobLeads:listAdmin / setArchivedAdmin / archiveStaleAdmin
+// upsertFromSync / deleteBySourceId / purgeAll stay internal — the /jobLeads/sync
+// HTTP action calls them after checking X-Sync-Key, and the CLI can run them directly.
+// Do not add a raw `mutation()` / `query()`.
 
 export const upsertFromSync = internalMutation({
   args: {
@@ -30,7 +37,7 @@ export const upsertFromSync = internalMutation({
   },
 });
 
-export const list = query({
+const listFns = exposeQuery({
   args: {},
   handler: async (ctx) => {
     // Returns archived rows too (with `archived: true`) so CLI inspection still
@@ -38,6 +45,8 @@ export const list = query({
     return await ctx.db.query("jobLeads").collect();
   },
 });
+export const list = listFns.public;
+export const listAdmin = listFns.admin;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -47,9 +56,9 @@ function leadActivityAt(lead: { emailReceivedAt?: number; updatedAt: number }) {
 
 /**
  * Archive or unarchive one lead. The row is kept either way.
- * CLI: npx convex run jobLeads:setArchived '{"id":"<jobLeads id>","archived":true}'
+ * CLI: npx convex run jobLeads:setArchivedAdmin '{"id":"<jobLeads id>","archived":true}'
  */
-export const setArchived = mutation({
+const setArchivedFns = exposeMutation({
   args: { id: v.id("jobLeads"), archived: v.boolean() },
   handler: async (ctx, { id, archived }) => {
     const existing = await ctx.db.get(id);
@@ -61,6 +70,8 @@ export const setArchived = mutation({
     return { archived };
   },
 });
+export const setArchived = setArchivedFns.public;
+export const setArchivedAdmin = setArchivedFns.admin;
 
 /**
  * Archive leads whose activity is at least `olderThanDays` old.
@@ -72,10 +83,10 @@ export const setArchived = mutation({
  * `dryRun: true` counts matches and writes nothing.
  *
  * CLI:
- *   npx convex run jobLeads:archiveStale '{"olderThanDays":60,"dryRun":true}'
- *   npx convex run jobLeads:archiveStale '{"olderThanDays":60,"statuses":["extracted","new","closed"]}'
+ *   npx convex run jobLeads:archiveStaleAdmin '{"olderThanDays":60,"dryRun":true}'
+ *   npx convex run jobLeads:archiveStaleAdmin '{"olderThanDays":60,"statuses":["extracted","new","closed"]}'
  */
-export const archiveStale = mutation({
+const archiveStaleFns = exposeMutation({
   args: {
     olderThanDays: v.number(),
     statuses: v.optional(v.array(v.string())),
@@ -112,6 +123,8 @@ export const archiveStale = mutation({
     };
   },
 });
+export const archiveStale = archiveStaleFns.public;
+export const archiveStaleAdmin = archiveStaleFns.admin;
 
 export const deleteBySourceId = internalMutation({
   args: { sourceLeadId: v.string() },

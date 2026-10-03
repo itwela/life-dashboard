@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation, useAction, Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import {
   Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Eye, EyeOff, ListChecks, Briefcase, CalendarDays, Award,
@@ -111,7 +111,7 @@ function CardFooter({ count, label, isDark }: { count: string | number; label?: 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function DashboardApp() {
   const [isDark, setIsDark] = useState(true);
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -950,5 +950,25 @@ export default function DashboardPage() {
 
       <AIAssistant />
     </div>
+  );
+}
+
+// Queries throw until Convex has a Clerk token, so they live in DashboardApp,
+// which only mounts after Convex has accepted the session.
+export default function DashboardPage() {
+  return (
+    <>
+      <AuthLoading>
+        <p style={{ padding: 24, fontFamily: "var(--font-inter)", color: "var(--text-muted)" }}>Loading…</p>
+      </AuthLoading>
+      <Authenticated>
+        <DashboardApp />
+      </Authenticated>
+      <Unauthenticated>
+        <p style={{ padding: 24, fontFamily: "var(--font-inter)", color: "var(--text-muted)" }}>
+          Signed in, but the dashboard could not attach that session to Convex. Confirm the Clerk Convex integration is active and CLERK_JWT_ISSUER_DOMAIN is set on this Convex deployment.
+        </p>
+      </Unauthenticated>
+    </>
   );
 }

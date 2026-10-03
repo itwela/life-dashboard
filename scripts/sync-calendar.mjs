@@ -4,6 +4,9 @@
 //
 //   node scripts/sync-calendar.mjs
 //
+// Writes through the admin function dashboard:seedCalendarEventsAdmin
+// (npx convex run). The public mutation requires a Clerk session.
+//
 // Each event carries a concise `title` (the label shown on the month grid) plus the
 // FULL `note` (time, who, confirmation #, etc.) and any `link` (Zoom, portal…) so the
 // detail shows on the day panel. Two kinds of dated item:
@@ -13,14 +16,9 @@
 //   2. A line with NO explicit date but a weekday schedule ("Mon, Wed, Fri", "— Monday")
 //      -> one event per matching weekday of the CURRENT month.
 import { readFileSync } from "fs";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api.js";
+import { convexRun } from "./convex-admin.mjs";
 
 const HUB_PATH = "/Users/itwelaibomu/Desktop/Itwela Obsidian/Todos 🟣/! Hub.md";
-
-const envLocal = readFileSync(new URL("../.env.local", import.meta.url), "utf8");
-const convexUrl = envLocal.match(/^NEXT_PUBLIC_CONVEX_URL=(.+)$/m)?.[1]?.trim();
-if (!convexUrl) throw new Error("NEXT_PUBLIC_CONVEX_URL not found in .env.local");
 
 const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
 const WEEKDAYS = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
@@ -131,6 +129,6 @@ for (const e of unique.slice(0, 40)) {
 }
 if (unique.length > 40) console.log(` … and ${unique.length - 40} more`);
 
-const client = new ConvexHttpClient(convexUrl);
-const result = await client.mutation(api.dashboard.seedCalendarEvents, { events: unique });
+// Admin internal mutation — the public seedCalendarEvents requires a Clerk session.
+const result = convexRun("dashboard:seedCalendarEventsAdmin", { events: unique });
 console.log(`Seeded ${result.count} events into the dashboard calendar.`);

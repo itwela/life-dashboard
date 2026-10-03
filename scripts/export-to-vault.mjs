@@ -3,26 +3,22 @@
 // markdown mirror into the vault so the data stays portable + Claude-readable.
 //
 // Usage: node scripts/export-to-vault.mjs
+// Uses the Convex CLI admin key (same deployment as `npx convex run`).
 // Env overrides:
-//   CONVEX_URL   (default: the life-dashboard dev deployment)
 //   VAULT_DIR    (default: this Mac's vault path)
+//   CONVEX_PROD=1  run against the production deployment
 
-import { ConvexHttpClient } from "convex/browser";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { convexRun } from "./convex-admin.mjs";
 
-const CONVEX_URL =
-  process.env.CONVEX_URL || "https://shiny-sheep-575.convex.cloud";
 const VAULT_DIR =
   process.env.VAULT_DIR || "/Users/itwelaibomu/Desktop/Itwela Obsidian";
 const OUT = join(VAULT_DIR, "Todos 🟣", "Dashboard Export.md");
 
-const client = new ConvexHttpClient(CONVEX_URL);
-
-const [todos, events] = await Promise.all([
-  client.query("dashboard:getTodos", {}),
-  client.query("dashboard:getCalendarEvents", {}),
-]);
+// Admin internal queries. Public getTodos / getCalendarEvents require a Clerk session.
+const todos = convexRun("dashboard:getTodosAdmin", {});
+const events = convexRun("dashboard:getCalendarEventsAdmin", {});
 
 const now = new Date();
 const stamp = now.toLocaleString("en-US", {
