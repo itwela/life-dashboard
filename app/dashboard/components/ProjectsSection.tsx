@@ -9,6 +9,7 @@ const ACCENT = "#fbbf24";
 interface Props {
   projects: Doc<"projects">[];
   upsertProject: (args: { id?: Id<"projects">; name: string; description?: string; status: "active" | "paused" | "shipped"; revenue?: number; notes?: string }) => Promise<unknown>;
+  deleteProject: (args: { id: Id<"projects"> }) => Promise<unknown>;
   isDark?: boolean;
 }
 
@@ -21,9 +22,11 @@ const statusMeta = {
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
-export default function ProjectsSection({ projects, upsertProject, isDark = true }: Props) {
+export default function ProjectsSection({ projects, upsertProject, deleteProject, isDark = true }: Props) {
   const [open, setOpen]           = useState(false);
   const [editing, setEditing]     = useState<Doc<"projects"> | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<Id<"projects"> | null>(null);
+  const [confirmModalDelete, setConfirmModalDelete] = useState(false);
   const [name, setName]           = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus]       = useState<"active" | "paused" | "shipped">("active");
@@ -57,8 +60,15 @@ export default function ProjectsSection({ projects, upsertProject, isDark = true
   const paused       = projects.filter((p) => p.status === "paused");
   const shipped      = projects.filter((p) => p.status === "shipped");
 
-  function openAdd() { setEditing(null); setName(""); setDescription(""); setStatus("active"); setRevenue("0"); setNotes(""); setOpen(true); }
-  function openEdit(p: Doc<"projects">) { setEditing(p); setName(p.name); setDescription(p.description ?? ""); setStatus(p.status); setRevenue(String(p.revenue)); setNotes(p.notes ?? ""); setOpen(true); }
+  function openAdd() { setEditing(null); setConfirmModalDelete(false); setName(""); setDescription(""); setStatus("active"); setRevenue("0"); setNotes(""); setOpen(true); }
+  function openEdit(p: Doc<"projects">) { setEditing(p); setConfirmModalDelete(false); setName(p.name); setDescription(p.description ?? ""); setStatus(p.status); setRevenue(String(p.revenue)); setNotes(p.notes ?? ""); setOpen(true); }
+
+  async function handleDelete(id: Id<"projects">) {
+    await deleteProject({ id });
+    setPendingDeleteId(null);
+    setConfirmModalDelete(false);
+    setOpen(false);
+  }
 
   async function handleSubmit() {
     if (!name.trim()) return;
@@ -169,11 +179,43 @@ export default function ProjectsSection({ projects, upsertProject, isDark = true
                         </div>
                       )}
                       {/* meta footer */}
-                      <div className="flex items-center justify-between pt-2 mt-0.5" style={{ borderTop: softBorder }}>
+                      <div className="flex items-center justify-between gap-2 pt-2 mt-0.5" style={{ borderTop: softBorder }}>
                         <span className={`text-[11px] ${text30}`}>Added {rel(p._creationTime)}</span>
-                        {p.revenue > 0
-                          ? <span className="text-sm font-bold text-yellow-400">{showRevenue ? fmt(p.revenue) : "••••"}</span>
-                          : <span className={`text-[11px] ${text30}`}>no revenue yet</span>}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {pendingDeleteId === p._id ? (
+                            <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[11px]" style={{ color: "#f87171" }}>Delete?</span>
+                              <button
+                                type="button"
+                                className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md text-white"
+                                style={{ background: "#dc2626" }}
+                                onClick={(e) => { e.stopPropagation(); void handleDelete(p._id); }}
+                              >
+                                Yes
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md"
+                                style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)", border: softBorder }}
+                                onClick={(e) => { e.stopPropagation(); setPendingDeleteId(null); }}
+                              >
+                                No
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`text-[11px] font-semibold ${text30} hover:text-red-400`}
+                              title="Delete this project"
+                              onClick={(e) => { e.stopPropagation(); setPendingDeleteId(p._id); }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                          {p.revenue > 0
+                            ? <span className="text-sm font-bold text-yellow-400">{showRevenue ? fmt(p.revenue) : "••••"}</span>
+                            : <span className={`text-[11px] ${text30}`}>no revenue yet</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -190,6 +232,21 @@ export default function ProjectsSection({ projects, upsertProject, isDark = true
         <FormField label="Status" isDark={isDark}><FormSelect value={status} onChange={(v) => setStatus(v as typeof status)} options={[{ value: "active", label: "🟢 Active" }, { value: "paused", label: "⏸️ Paused" }, { value: "shipped", label: "🚀 Shipped" }]} isDark={isDark} /></FormField>
         <FormField label="Revenue ($)" isDark={isDark}><FormInput value={revenue} onChange={setRevenue} type="number" placeholder="0" isDark={isDark} /></FormField>
         <FormField label="Notes (optional)" isDark={isDark}><FormInput value={notes} onChange={setNotes} placeholder="Next steps, ideas..." isDark={isDark} /></FormField>
+        {editing && (
+          confirmModalDelete ? (
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <p className="text-xs" style={{ color: "#f87171" }}>Delete &ldquo;{editing.name}&rdquo;?</p>
+              <div className="flex gap-2 shrink-0">
+                <button type="button" className={`text-xs font-semibold px-2 py-1 rounded-lg ${text40}`} onClick={() => setConfirmModalDelete(false)}>Cancel</button>
+                <button type="button" className="text-xs font-semibold px-2 py-1 rounded-lg text-white" style={{ background: "#dc2626" }} onClick={() => void handleDelete(editing._id)}>Delete</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="text-xs font-semibold text-left" style={{ color: "#f87171" }} onClick={() => setConfirmModalDelete(true)}>
+              Delete project
+            </button>
+          )
+        )}
       </AddModal>
     </div>
   );

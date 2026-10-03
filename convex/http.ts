@@ -43,6 +43,8 @@ http.route({
       });
     }
 
+    // Archive state is dashboard-local. This payload has no archived flag, and
+    // upsertFromSync patches only the sync fields, so a refresh cannot un-archive.
     await ctx.runMutation(internal.jobLeads.upsertFromSync, {
       sourceLeadId,
       company,

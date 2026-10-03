@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, GripVertical } from "lucide-react";
+import { Search, GripVertical, Trash2 } from "lucide-react";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 
 const ACCENT = "#818cf8";
@@ -14,11 +14,13 @@ const catRank = (c: string) => {
 interface Props {
   todos: Doc<"todos">[];
   toggleTodo: (args: { id: Id<"todos">; done: boolean }) => Promise<unknown>;
+  updateTodo: (args: { id: Id<"todos">; text?: string; category?: string; done?: boolean }) => Promise<unknown>;
+  deleteTodo: (args: { id: Id<"todos"> }) => Promise<unknown>;
   reorderTodos: (args: { ids: Id<"todos">[] }) => Promise<unknown>;
   isDark?: boolean;
 }
 
-export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark = true }: Props) {
+export default function TodosSection({ todos, toggleTodo, updateTodo, deleteTodo, reorderTodos, isDark = true }: Props) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string | null>(null);
   const [status, setStatus] = useState<"open" | "all" | "done">("open");
@@ -28,6 +30,11 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
   const [dragId, setDragId] = useState<Id<"todos"> | null>(null);
   const [overId, setOverId] = useState<Id<"todos"> | null>(null);
   const draggedRef = useRef(false);
+  const [editingId, setEditingId] = useState<Id<"todos"> | null>(null);
+  const [editText, setEditText] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<Id<"todos"> | null>(null);
+  // Blur fires after Enter and after Escape. This skips a second save or a cancelled one.
+  const editClosedRef = useRef(false);
 
   useEffect(() => {
     const ids = [...todos]
@@ -52,6 +59,10 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
     ...CAT_ORDER.filter((c) => todos.some((t) => t.category === c)),
     ...[...new Set(todos.map((t) => t.category))].filter((c) => !CAT_ORDER.includes(c)),
   ];
+  const categoryOptions = [
+    ...CAT_ORDER,
+    ...allCats.filter((c) => !CAT_ORDER.includes(c)),
+  ];
 
   const query = q.trim().toLowerCase();
   const canDrag = !query; // reordering a search-filtered subset isn't meaningful
@@ -72,6 +83,27 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
     ...CAT_ORDER.filter((c) => groups.has(c)),
     ...[...groups.keys()].filter((c) => !CAT_ORDER.includes(c)),
   ];
+
+  function startEdit(t: Doc<"todos">) {
+    editClosedRef.current = false;
+    setEditingId(t._id);
+    setEditText(t.text);
+  }
+
+  function commitEdit(id: Id<"todos">) {
+    if (editClosedRef.current) return;
+    editClosedRef.current = true;
+    const text = editText.trim();
+    setEditingId(null);
+    const current = byId.get(id);
+    if (!text || !current || current.text === text) return;
+    void updateTodo({ id, text });
+  }
+
+  function cancelEdit() {
+    editClosedRef.current = true;
+    setEditingId(null);
+  }
 
   function handleDrop(targetId: Id<"todos">) {
     const drag = dragId ? byId.get(dragId) : null;
@@ -111,7 +143,7 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg" style={{ background: "linear-gradient(135deg, rgba(129,140,248,0.3), rgba(79,70,229,0.15))", border: "1px solid rgba(129,140,248,0.35)", boxShadow: "0 0 16px rgba(129,140,248,0.3)" }}>✓</div>
         <div className="flex-1">
           <h2 className={`text-lg font-bold ${textMain}`}>To-Do</h2>
-          <p className={`text-xs ${text40}`}>{canDrag ? "Drag the handle to reorder" : "Clear search to reorder"} · {total - done} open</p>
+          <p className={`text-xs ${text40}`}>{canDrag ? "Drag the handle to reorder · click text to edit" : "Clear search to reorder"} · {total - done} open</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-black" style={{ color: ACCENT }}>{pct}%</p>
@@ -176,7 +208,7 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5">
         {visible.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className={`text-sm ${text30}`}>{total === 0 ? "No todos synced yet." : "No todos match your filters."}</p>
+            <p className={`text-sm ${text30}`}>{total === 0 ? "No todos yet." : "No todos match your filters."}</p>
           </div>
         ) : (
           shownCats.map((c) => {
@@ -192,17 +224,15 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
                   {items.map((t) => {
                     const isDragging = dragId === t._id;
                     const isOver = overId === t._id && dragId !== null && dragId !== t._id && byId.get(dragId)?.category === t.category;
+                    const isEditing = editingId === t._id;
                     return (
                       <div
                         key={t._id}
-                        draggable={canDrag}
-                        onDragStart={(e) => { setDragId(t._id); draggedRef.current = true; e.dataTransfer.effectAllowed = "move"; }}
                         onDragOver={(e) => { if (canDrag) { e.preventDefault(); setOverId(t._id); } }}
                         onDragLeave={() => setOverId((o) => (o === t._id ? null : o))}
                         onDrop={(e) => { e.preventDefault(); handleDrop(t._id); }}
-                        onDragEnd={() => { setDragId(null); setOverId(null); setTimeout(() => { draggedRef.current = false; }, 0); }}
-                        onClick={() => { if (draggedRef.current) return; toggleTodo({ id: t._id, done: !t.done }); }}
-                        className="flex items-start gap-2.5 px-2.5 py-2.5 rounded-xl transition-all cursor-pointer"
+                        onClick={() => { if (draggedRef.current || isEditing) return; toggleTodo({ id: t._id, done: !t.done }); }}
+                        className="flex items-start gap-2 px-2.5 py-2.5 rounded-xl transition-all cursor-pointer"
                         style={{
                           background: rowFill,
                           border: isOver ? `1px solid ${ACCENT}` : rowBorder,
@@ -213,6 +243,10 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
                         {canDrag && (
                           <span
                             className="mt-0.5 shrink-0"
+                            draggable
+                            onDragStart={(e) => { setDragId(t._id); draggedRef.current = true; e.dataTransfer.effectAllowed = "move"; e.stopPropagation(); }}
+                            onDragEnd={() => { setDragId(null); setOverId(null); setTimeout(() => { draggedRef.current = false; }, 0); }}
+                            onClick={(e) => e.stopPropagation()}
                             style={{ cursor: "grab", color: mutedText, touchAction: "none" }}
                             title="Drag to reorder"
                           >
@@ -229,9 +263,84 @@ export default function TodosSection({ todos, toggleTodo, reorderTodos, isDark =
                         >
                           {t.done ? "✓" : ""}
                         </span>
-                        <span className={`text-sm leading-snug min-w-0 flex-1 break-words ${t.done ? `${text30} line-through` : isDark ? "text-white/80" : "text-black/80"}`}>
-                          {t.text}
-                        </span>
+                        {isEditing ? (
+                          <input
+                            autoFocus
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") { e.preventDefault(); commitEdit(t._id); }
+                              if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+                            }}
+                            onBlur={() => commitEdit(t._id)}
+                            className={`text-sm leading-snug min-w-0 flex-1 rounded-md px-1.5 py-0.5 outline-none ${textMain}`}
+                            style={{ background: isDark ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.9)", border: `1px solid ${ACCENT}66` }}
+                          />
+                        ) : (
+                          <span
+                            className={`text-sm leading-snug min-w-0 flex-1 break-words cursor-text ${t.done ? `${text30} line-through` : isDark ? "text-white/80" : "text-black/80"}`}
+                            title="Click to edit"
+                            onClick={(e) => { e.stopPropagation(); startEdit(t); }}
+                          >
+                            {t.text}
+                          </span>
+                        )}
+                        {pendingDeleteId !== t._id && (
+                        <select
+                          value={t.category}
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const category = e.target.value;
+                            if (category && category !== t.category) void updateTodo({ id: t._id, category });
+                          }}
+                          className="shrink-0 text-[11px] px-1.5 py-1 rounded-lg outline-none max-w-[6.5rem]"
+                          style={{ background: isDark ? "rgba(0,0,0,0.25)" : "#fff", color: mutedText, border: rowBorder }}
+                          title="Change category"
+                        >
+                          {(categoryOptions.includes(t.category) ? categoryOptions : [t.category, ...categoryOptions]).map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                        )}
+                        {pendingDeleteId === t._id ? (
+                          <span
+                            className="shrink-0 flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <span className="text-[11px]" style={{ color: "#f87171" }}>Delete?</span>
+                            <button
+                              type="button"
+                              className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md text-white"
+                              style={{ background: "#dc2626" }}
+                              onClick={() => { void deleteTodo({ id: t._id }); setPendingDeleteId(null); }}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md"
+                              style={{ color: mutedText, border: rowBorder }}
+                              onClick={() => setPendingDeleteId(null)}
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="shrink-0 p-1 rounded-md"
+                            style={{ color: mutedText }}
+                            title="Delete todo"
+                            onClick={(e) => { e.stopPropagation(); setPendingDeleteId(t._id); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     );
                   })}

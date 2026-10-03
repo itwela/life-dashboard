@@ -458,7 +458,7 @@ export const upsertBook = mutation({
   },
 });
 
-// ─── Todos (synced from the Obsidian vault Hub) ─────────────────────────────
+// ─── Todos (dashboard is the source of truth) ───────────────────────────────
 
 export const getTodos = query({
   args: {},
@@ -467,6 +467,10 @@ export const getTodos = query({
   },
 });
 
+/**
+ * DESTRUCTIVE. Deletes every todo, then inserts `todos` as the replacement list.
+ * This is the old full-list rebuild. To change one item, use `updateTodo` or `deleteTodo`.
+ */
 export const seedTodos = mutation({
   args: {
     todos: v.array(
@@ -499,6 +503,47 @@ export const addTodo = mutation({
     const all = await ctx.db.query("todos").withIndex("by_order").collect();
     const maxOrder = all.reduce((m, t) => Math.max(m, t.order), -1);
     await ctx.db.insert("todos", { text, category, done: false, order: maxOrder + 1 });
+  },
+});
+
+/**
+ * Update a single todo. Omitted fields are left unchanged.
+ * CLI: npx convex run dashboard:updateTodo '{"id":"<todos id>","text":"New text","category":"Work","done":false}'
+ */
+export const updateTodo = mutation({
+  args: {
+    id: v.id("todos"),
+    text: v.optional(v.string()),
+    category: v.optional(v.string()),
+    done: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { id, text, category, done }) => {
+    const patch: { text?: string; category?: string; done?: boolean } = {};
+    if (text !== undefined) {
+      const trimmed = text.trim();
+      if (!trimmed) throw new Error("Todo text cannot be empty");
+      patch.text = trimmed;
+    }
+    if (category !== undefined) {
+      const trimmed = category.trim();
+      if (!trimmed) throw new Error("Category cannot be empty");
+      patch.category = trimmed;
+    }
+    if (done !== undefined) patch.done = done;
+    if (Object.keys(patch).length === 0) return;
+    await ctx.db.patch(id, patch);
+  },
+});
+
+/**
+ * Delete a single todo. The rest of the list is left alone.
+ * CLI: npx convex run dashboard:deleteTodo '{"id":"<todos id>"}'
+ */
+export const deleteTodo = mutation({
+  args: { id: v.id("todos") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (existing) await ctx.db.delete(id);
   },
 });
 
@@ -638,7 +683,28 @@ export const upsertProject = mutation({
   },
 });
 
+/**
+ * Delete a single project. Use this to remove a duplicate row.
+ * Ids come from `npx convex run dashboard:getProjects`.
+ * CLI: npx convex run dashboard:deleteProject '{"id":"<projects id>"}'
+ */
+export const deleteProject = mutation({
+  args: { id: v.id("projects") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (existing) await ctx.db.delete(id);
+  },
+});
+
 // ─── Calendar (vault-derived + manual events) ────────────────────────────────
+
+// A span's last day is never stored before its start. Empty means single-day.
+// Clamping (rather than swapping) matches the drag bug: the start moved forward
+// and the old end was left behind, so the event now lives on the new start day.
+function normalizeEventEnd(date: string, endDate: string | undefined): string | undefined {
+  if (!endDate) return undefined;
+  return endDate < date ? date : endDate;
+}
 
 export const getCalendarEvents = query({
   args: {},
@@ -650,7 +716,14 @@ export const getCalendarEvents = query({
 export const addCalendarEvent = mutation({
   args: { date: v.string(), endDate: v.optional(v.string()), title: v.string(), note: v.optional(v.string()), link: v.optional(v.string()) },
   handler: async (ctx, { date, endDate, title, note, link }) => {
-    await ctx.db.insert("calendarEvents", { date, endDate: endDate || undefined, title, note, link, source: "manual" });
+    await ctx.db.insert("calendarEvents", {
+      date,
+      endDate: normalizeEventEnd(date, endDate || undefined),
+      title,
+      note,
+      link,
+      source: "manual",
+    });
   },
 });
 
@@ -710,14 +783,39 @@ export const updateCalendarEvent = mutation({
     link: v.optional(v.string()),
   },
   handler: async (ctx, { id, date, endDate, title, note, link }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return;
+    const nextDate = date !== undefined ? date : existing.date;
+    // Empty string clears the multi-day span back to a single-day event.
+    const requestedEnd = endDate !== undefined ? endDate || undefined : existing.endDate;
+    const nextEnd = normalizeEventEnd(nextDate, requestedEnd);
     const patch: Record<string, unknown> = { source: "manual" };
     if (date !== undefined) patch.date = date;
-    // Empty string clears the multi-day span back to a single-day event.
-    if (endDate !== undefined) patch.endDate = endDate || undefined;
+    // Write the end when the caller set it, or when the new start would leave
+    // a stored endDate behind (drag of a same-day / already-inverted event).
+    if (endDate !== undefined || nextEnd !== existing.endDate) patch.endDate = nextEnd;
     if (title !== undefined) patch.title = title;
     if (note !== undefined) patch.note = note;
     if (link !== undefined) patch.link = link;
     await ctx.db.patch(id, patch);
+  },
+});
+
+/**
+ * Clamp stored spans whose endDate is before date (end becomes the start day).
+ * Nothing is deleted. `dryRun` counts only.
+ * CLI: npx convex run dashboard:repairCalendarSpans '{"dryRun":true}'
+ *      npx convex run dashboard:repairCalendarSpans '{}'
+ */
+export const repairCalendarSpans = mutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { dryRun }) => {
+    const events = await ctx.db.query("calendarEvents").collect();
+    const inverted = events.filter((e) => !!e.endDate && e.endDate < e.date);
+    if (!dryRun) {
+      for (const e of inverted) await ctx.db.patch(e._id, { endDate: e.date });
+    }
+    return { matched: inverted.length, repaired: dryRun ? 0 : inverted.length, dryRun: !!dryRun };
   },
 });
 
