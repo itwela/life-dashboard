@@ -178,6 +178,23 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_active", ["active"]),
 
+  // ── Recurring weekly series (a show that drops every Sunday, a standing call) ──
+  // The rule is the durable record; `materializeRecurring` expands it into real
+  // calendarEvents rows so it shows up in the month calendar and the Schedule
+  // member's agenda. Instances are keyed by (title, date) and skipped if present,
+  // which makes re-running materialization safe.
+  recurringEvents: defineTable({
+    title: v.string(),
+    note: v.optional(v.string()),
+    link: v.optional(v.string()),
+    category: v.optional(v.string()), // "Entertainment", "Work"…
+    recurDays: v.array(v.number()), // 0=Sun … 6=Sat
+    startDate: v.string(), // "YYYY-MM-DD" — series anchor; never generates before this
+    active: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_active", ["active"])
+    .index("by_title", ["title"]),
+
   checkIns: defineTable({
     date: v.string(), // "YYYY-MM-DD"
     timeOfDay: v.union(v.literal("morning"), v.literal("afternoon"), v.literal("night")),

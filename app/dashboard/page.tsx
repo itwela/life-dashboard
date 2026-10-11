@@ -167,6 +167,7 @@ export default function DashboardPage() {
   // ── Assistant members ──
   const allCalendarEvents = useQuery(api.dashboard.getCalendarEvents)     ?? [];
   const routines          = useQuery(api.memberData.getRoutines)          ?? [];
+  const recurringEvents   = useQuery(api.memberData.getRecurringEvents)   ?? [];
   const checkInBoard      = useQuery(api.memberData.getCheckInBoard, { today: dayKey });
   const memberBriefing    = useQuery(api.memberData.getBriefing, { today: dayKey });
 
@@ -204,6 +205,22 @@ export default function DashboardPage() {
   const setRoutineActive    = useMutation(api.memberData.setRoutineActive);
   const deleteRoutine       = useMutation(api.memberData.deleteRoutine);
   const saveCheckInRoutine  = useMutation(api.memberData.saveCheckInRoutine);
+  const materializeRecurring = useMutation(api.memberData.materializeRecurring);
+
+  /**
+   * Extend every active weekly series by six months from today. Idempotent —
+   * already-materialized occurrences are skipped server-side, so tapping this
+   * twice is harmless.
+   */
+  const extendRecurring = async () => {
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setMonth(to.getMonth() + 6);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    await materializeRecurring({ from: iso(from), to: iso(to) });
+  };
 
   // ── Derived data ──
   const financesCash        = accounts.filter(a => a.type==="checking"||a.type==="savings").reduce((s,a)=>s+a.balance,0);
@@ -1095,6 +1112,8 @@ export default function DashboardPage() {
                   isDark={isDark}
                   events={todaysEvents}
                   routines={routines}
+                  recurringEvents={recurringEvents}
+                  onExtendRecurring={extendRecurring}
                   logRoutinesToToday={logRoutinesToToday}
                   setRoutineActive={setRoutineActive}
                   deleteRoutine={deleteRoutine}

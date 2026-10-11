@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { CalendarCheck, CalendarDays, Clock, Plus, Repeat, X } from "lucide-react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
-import { toSpan, spansOverlap, findFreeGaps, prettyTime, parseTime, formatTime, type TimeSpan } from "../../../../convex/memberLogic";
+import { toSpan, spansOverlap, findFreeGaps, prettyTime, parseTime, formatTime, repeatLabel, type TimeSpan } from "../../../../convex/memberLogic";
 import {
   ACCENT,
   HOUR_END,
@@ -28,6 +28,11 @@ interface Props {
   isDark: boolean;
   events: Doc<"calendarEvents">[];             // today's events
   routines: Doc<"routines">[];                 // active recurring routines
+  // Weekly series (a show that drops every Sunday). The rule lives here; its
+  // individual episodes are materialized into calendarEvents, so they also show
+  // in `events` on the day they land.
+  recurringEvents: Doc<"recurringEvents">[];
+  onExtendRecurring: () => Promise<unknown>;   // top up the materialized horizon
   logRoutinesToToday: (args: { date: string }) => Promise<unknown>;
   setRoutineActive: (args: { id: Id<"routines">; active: boolean }) => Promise<unknown>;
   deleteRoutine: (args: { id: Id<"routines"> }) => Promise<unknown>;
@@ -83,10 +88,25 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-export default function ScheduleMemberPanel({ dayKey, isDark, events, routines, logRoutinesToToday, setRoutineActive, deleteRoutine, onAddEvent, onClose }: Props) {
+export default function ScheduleMemberPanel({ dayKey, isDark, events, routines, recurringEvents, onExtendRecurring, logRoutinesToToday, setRoutineActive, deleteRoutine, onAddEvent, onClose }: Props) {
   const [nowMin, setNowMin] = useState<number | null>(null);
   const [logging, setLogging] = useState(false);
   const [logMsg, setLogMsg] = useState<string | null>(null);
+  const [extending, setExtending] = useState(false);
+  const [extendMsg, setExtendMsg] = useState<string | null>(null);
+
+  async function handleExtend() {
+    setExtending(true);
+    setExtendMsg(null);
+    try {
+      await onExtendRecurring();
+      setExtendMsg("Extended by 6 months.");
+    } catch {
+      setExtendMsg("Couldn't extend — try again.");
+    } finally {
+      setExtending(false);
+    }
+  }
 
   // Live clock (client-only, so SSR and hydration never disagree).
   useEffect(() => {
@@ -337,6 +357,71 @@ export default function ScheduleMemberPanel({ dayKey, isDark, events, routines, 
               </div>
             )}
           </section>
+
+          {recurringEvents.length > 0 && (
+            <section className="rounded-[20px] p-4 min-w-0" style={{ background: rowFill, border: rowBorder }}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`text-sm font-semibold flex items-center gap-1.5 ${main}`}>
+                  <Repeat size={14} style={{ color: ACCENT }} />
+                  Weekly series
+                </h3>
+                <span className={`text-[11px] ${text40}`}>{recurringEvents.length} active</span>
+              </div>
+
+              <div className="space-y-2">
+                {recurringEvents.map((s) => {
+                  const landsToday = s.recurDays.includes(todayWeekday);
+                  return (
+                    <div
+                      key={s._id}
+                      className="flex items-center justify-between gap-3 rounded-[14px] px-3 py-2"
+                      style={{ background: hexAlpha(ACCENT, 0.08), border: rowBorder }}
+                    >
+                      <div className="min-w-0">
+                        <div className={`text-xs font-semibold truncate ${main}`}>{s.title}</div>
+                        <div className={`text-[11px] ${text40}`}>
+                          {repeatLabel(s.recurDays)}
+                          {landsToday && (
+                            <span style={{ color: ACCENT, fontWeight: 600 }}> · lands today</span>
+                          )}
+                        </div>
+                      </div>
+                      {s.category && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: hexAlpha(ACCENT, 0.15), color: isDark ? "#c7d2fe" : "#3730a3" }}
+                        >
+                          {s.category}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between gap-3 mt-3">
+                <p className={`text-[11px] ${text30}`}>
+                  Episodes are on the calendar. Extend to keep them rolling.
+                </p>
+                <button
+                  onClick={() => void handleExtend()}
+                  disabled={extending}
+                  className="text-[11px] font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
+                  style={{
+                    background: hexAlpha(ACCENT, 0.15),
+                    color: isDark ? "#c7d2fe" : "#3730a3",
+                    border: `1px solid ${hexAlpha(ACCENT, 0.3)}`,
+                    cursor: extending ? "wait" : "pointer",
+                    opacity: extending ? 0.6 : 1,
+                  }}
+                  title="Materialize another 6 months of episodes"
+                >
+                  {extending ? "Extending…" : "Extend 6 months"}
+                </button>
+              </div>
+              {extendMsg && <p className={`text-[11px] mt-2 ${text40}`}>{extendMsg}</p>}
+            </section>
+          )}
         </div>
       </div>
     </div>

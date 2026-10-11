@@ -124,6 +124,53 @@ export function findFreeGaps(
   return gaps;
 }
 
+// ── Recurrence (weekly series) ─────────────────────────────────────────────────
+
+/**
+ * First `dayOfWeek` (0=Sun…6=Sat) on or after `from`.
+ * Calling this with today's date is what makes a weekly series include today
+ * when today already *is* the drop day.
+ */
+export function nextOccurrenceOnOrAfter(from: string, dayOfWeek: number): string {
+  const current = fromDayKey(from).getDay();
+  const delta = (dayOfWeek - current + 7) % 7;
+  return addDays(from, delta);
+}
+
+/**
+ * Every weekly occurrence in the inclusive window `[from, to]`.
+ *
+ * Hard-capped at 600 iterations so a fat-fingered horizon (year 3000) can never
+ * spin forever — the caller gets a truncated list instead of a hung function.
+ */
+export function occurrencesWithin(
+  start: string,
+  dayOfWeek: number,
+  from: string,
+  to: string,
+): string[] {
+  const out: string[] = [];
+  if (to < from) return out;
+  let cursor = nextOccurrenceOnOrAfter(start, dayOfWeek);
+  if (cursor < from) cursor = nextOccurrenceOnOrAfter(from, dayOfWeek);
+  let guard = 0;
+  while (cursor <= to && guard++ < 600) {
+    out.push(cursor);
+    cursor = addDays(cursor, 7);
+  }
+  return out;
+}
+
+/** "Every Sunday" / "Every Mon, Wed" — human label for a recurrence rule. */
+export function repeatLabel(days: number[]): string {
+  const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const sorted = [...new Set(days)].sort((a, b) => a - b);
+  if (sorted.length === 7) return "Every day";
+  if (sorted.length === 1) return `Every ${names[sorted[0]]}`;
+  const short = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return `Every ${sorted.map((d) => short[d]).join(", ")}`;
+}
+
 // ── To-Do member ───────────────────────────────────────────────────────────────
 
 export type Priority = "low" | "medium" | "high";

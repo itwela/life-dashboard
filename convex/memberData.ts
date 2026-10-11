@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { computeStreak, todoSummary, toDayKey, type CheckInLike, type TodoLike } from "./memberLogic";
+import { computeStreak, occurrencesWithin, todoSummary, toDayKey, type CheckInLike, type TodoLike } from "./memberLogic";
 
 /**
  * Data + mutations for the three dashboard assistant members.
@@ -106,6 +106,111 @@ export const logRoutinesToToday = mutation({
       created++;
     }
     return { created };
+  },
+});
+
+// ── Recurring weekly series ───────────────────────────────────────────────────
+
+export const getRecurringEvents = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("recurringEvents").withIndex("by_active", (q) => q.eq("active", true)).collect();
+  },
+});
+
+/**
+ * Create a weekly series rule. `days` is 0=Sun…6=Sat; `startDate` anchors the
+ * series so it never generates occurrences in the past.
+ */
+export const addRecurringEvent = mutation({
+  args: {
+    title: v.string(),
+    recurDays: v.array(v.number()),
+    startDate: v.string(),
+    note: v.optional(v.string()),
+    link: v.optional(v.string()),
+    category: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const title = args.title.trim();
+    if (title.length === 0) throw new Error("Series needs a title");
+    if (args.recurDays.length === 0) throw new Error("Pick at least one day");
+    if (args.recurDays.some((d) => d < 0 || d > 6)) throw new Error("Days must be 0 (Sun) – 6 (Sat)");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.startDate)) throw new Error("startDate must be YYYY-MM-DD");
+    return await ctx.db.insert("recurringEvents", {
+      title,
+      note: args.note,
+      link: args.link,
+      category: args.category,
+      recurDays: [...new Set(args.recurDays)].sort((a, b) => a - b),
+      startDate: args.startDate,
+      active: true,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Expand recurring series into real calendarEvents rows for `[from, to]`.
+ *
+ * Idempotent by design: an occurrence whose (title, date) already exists on the
+ * calendar is skipped, so this can be re-run any time to extend the horizon
+ * without creating duplicates. Existing rows are never deleted or modified —
+ * if you delete an occurrence by hand, re-running will bring it back.
+ */
+export const materializeRecurring = mutation({
+  args: { from: v.string(), to: v.string() },
+  handler: async (ctx, { from, to }) => {
+    if (to < from) throw new Error("`to` must not be before `from`");
+    const rules = await ctx.db
+      .query("recurringEvents")
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .collect();
+
+    // Read the calendar once and index existing occurrences by title, rather than
+    // re-scanning the table for every rule.
+    const existing = await ctx.db.query("calendarEvents").withIndex("by_date").collect();
+    const takenByTitle = new Map<string, Set<string>>();
+    for (const e of existing) {
+      const set = takenByTitle.get(e.title) ?? new Set<string>();
+      set.add(e.date);
+      takenByTitle.set(e.title, set);
+    }
+
+    let created = 0;
+    let skipped = 0;
+    for (const rule of rules) {
+      const dates = occurrencesWithin(rule.startDate, rule.recurDays[0], from, to);
+      // Rules with several days are intersected with the full day list.
+      const allDates =
+        rule.recurDays.length > 1
+          ? rule.recurDays
+              .flatMap((d) => occurrencesWithin(rule.startDate, d, from, to))
+              .sort()
+          : dates;
+
+      const taken = takenByTitle.get(rule.title) ?? new Set<string>();
+      takenByTitle.set(rule.title, taken);
+
+      for (const date of [...new Set(allDates)]) {
+        if (taken.has(date)) {
+          skipped++;
+          continue;
+        }
+        await ctx.db.insert("calendarEvents", {
+          date,
+          title: rule.title,
+          source: "manual",
+          note: rule.note,
+          link: rule.link,
+          category: rule.category,
+          status: "todo",
+        });
+        taken.add(date);
+        created++;
+      }
+    }
+    return { rules: rules.length, created, skipped };
   },
 });
 
