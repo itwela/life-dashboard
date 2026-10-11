@@ -15,6 +15,8 @@ import type * as financeDump from "../financeDump.js";
 import type * as fuel from "../fuel.js";
 import type * as http from "../http.js";
 import type * as jobLeads from "../jobLeads.js";
+import type * as memberData from "../memberData.js";
+import type * as memberLogic from "../memberLogic.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +32,8 @@ declare const fullApi: ApiFromModules<{
   fuel: typeof fuel;
   http: typeof http;
   jobLeads: typeof jobLeads;
+  memberData: typeof memberData;
+  memberLogic: typeof memberLogic;
 }>;
 
 /**

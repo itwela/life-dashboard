@@ -138,10 +138,18 @@ export default defineSchema({
     category: v.string(), // vault section, e.g. "Today", "Work", "Creative"
     done: v.boolean(),
     order: v.number(),    // preserves vault ordering
-  }).index("by_order", ["order"]),
+    // ── To-Do member fields (all optional so existing rows/inserts stay valid) ──
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    dueDate: v.optional(v.string()), // "YYYY-MM-DD" — due day. Absent = someday/no date.
+    notes: v.optional(v.string()),
+    completedAt: v.optional(v.number()), // epoch ms, stamped when marked done
+  }).index("by_order", ["order"])
+    .index("by_due", ["dueDate"]),
 
-  // Month calendar: vault-derived events (re-seeded by scripts/sync-calendar.mjs,
-  // which wipes source="vault" rows) plus manual ones added from the UI/agent.
+  // Month calendar events. Everything is written from the UI/agent as "manual".
+  // "vault" is LEGACY: it came from the retired scripts/sync-calendar.mjs Obsidian
+  // import, which no longer exists, so no new vault rows are ever produced. The
+  // literal is kept only so the old rows still validate — do not write it again.
   calendarEvents: defineTable({
     date: v.string(), // "YYYY-MM-DD" — start day
     endDate: v.optional(v.string()), // "YYYY-MM-DD" — last day; writers clamp this so it is never before `date`. When set and > date, the event draws as a spanning bar
@@ -151,7 +159,24 @@ export default defineSchema({
     link: v.optional(v.string()), // associated URL (Zoom, portal, scholarship page…)
     done: v.optional(v.boolean()), // completed — stays on the calendar, struck through
     status: v.optional(v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done"))), // 3-state; falls back to `done`
+    // ── Schedule member fields ──
+    startTime: v.optional(v.string()), // "HH:MM" 24h. Absent = all-day / untimed event.
+    endTime: v.optional(v.string()),   // "HH:MM" 24h. Clamped >= startTime by writers.
+    location: v.optional(v.string()),
+    category: v.optional(v.string()),  // "Class" | "Work" | "Personal" | "Health" | anything
   }).index("by_date", ["date"]),
+
+  // ── Schedule member: recurring weekly routines (gym at 07:00, class Tue/Thu 18:00…) ──
+  routines: defineTable({
+    title: v.string(),
+    days: v.array(v.number()), // ISO-ish: 0=Sun … 6=Sat (matches workoutSchedule convention)
+    startTime: v.optional(v.string()), // "HH:MM"
+    endTime: v.optional(v.string()),
+    category: v.optional(v.string()),
+    location: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_active", ["active"]),
 
   checkIns: defineTable({
     date: v.string(), // "YYYY-MM-DD"
@@ -161,7 +186,19 @@ export default defineSchema({
     journal: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     createdAt: v.number(),
+    // ── Check-In member fields ──
+    energy: v.optional(v.number()), // 1–5 self-reported energy
+    focus: v.optional(v.number()),  // 1–5 self-reported focus
   }).index("by_date", ["date"]),
+
+  // ── Check-In member: when you *want* to be nudged, and how hard ──
+  checkInRoutine: defineTable({
+    morningTime: v.string(),   // "HH:MM" local
+    afternoonTime: v.string(),
+    nightTime: v.string(),
+    nudgesEnabled: v.boolean(),
+    updatedAt: v.number(),
+  }),
 
   // Mirror of JobKompass job leads, synced via POST /jobLeads/sync.
   // `archived` / `archivedAt` are local-only. The sync upsert never sets or clears them,

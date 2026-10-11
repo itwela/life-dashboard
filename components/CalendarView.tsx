@@ -579,7 +579,7 @@ export default function CalendarView({
                       ) : null}
                       <button
                         style={{ color: mutedText }}
-                        title={e.source === "vault" ? "Delete (returns on next vault sync)" : "Delete"}
+                        title="Delete"
                         onClick={() => setPendingDelete({ id: e._id, title: e.title })}
                       >
                         <Trash2 size={15} />

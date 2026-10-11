@@ -3,8 +3,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Doc } from "../../convex/_generated/dataModel";
 import {
   Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Eye, EyeOff, ListChecks, Briefcase, CalendarDays, Award,
+  Sparkles, Users,
 } from "lucide-react";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
@@ -19,11 +21,18 @@ import AIAssistant from "./components/AIAssistant";
 import CheckInView from "./components/CheckInView";
 import CalendarView from "@/components/CalendarView";
 import { JobLeadsFeed } from "@/components/JobLeadsFeed";
+import DailyBriefingPanel from "./components/DailyBriefingPanel";
+import ScheduleMemberPanel from "./members/schedule/ScheduleMemberPanel";
+import TodosMemberPanel from "./members/todos/TodosMemberPanel";
+import CheckinMemberPanel from "./members/checkin/CheckinMemberPanel";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WGU_DEFAULTS = { totalCU: 119, earnedCU: 43, activeCount: 13, termsCompleted: 5, termsTotal: 11 };
 type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "todos" | "leads" | "records";
+// Assistant members share one full-view modal, switched by this sub-tab so the
+// panels don't need their own routing.
+type MemberTab = "schedule" | "todos" | "checkin";
 
 const LIGHT_VIDEO = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_103318_2aa26b55-df1a-43a6-903d-941e718c9366.mp4";
 const DARK_VIDEO  = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260514_102933_4e8f73b5-775a-4179-b2fb-472f59063dcd.mp4";
@@ -114,6 +123,9 @@ function CardFooter({ count, label, isDark }: { count: string | number; label?: 
 export default function DashboardPage() {
   const [isDark, setIsDark] = useState(true);
   const [fullViewSection, setFullViewSection] = useState<TabKey | null>(null);
+  const [showMembers, setShowMembers] = useState(false);
+  const [memberTab, setMemberTab] = useState<MemberTab>("schedule");
+  const [showBriefing, setShowBriefing] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
@@ -130,6 +142,13 @@ export default function DashboardPage() {
   const [netWorthHidden, setNetWorthHidden] = useState(true);
 
   // ── Convex data ──
+  // Today as a local "YYYY-MM-DD" key (never toISOString — that shifts timezone).
+  // Memoized so the member queries keep a stable arg and don't re-subscribe.
+  const dayKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
   const accounts          = useQuery(api.dashboard.getAccounts)          ?? [];
   const financeFiles      = useQuery(api.dashboard.getFinanceFiles)       ?? [];
   const courses           = useQuery(api.dashboard.getCourses)            ?? [];
@@ -144,6 +163,12 @@ export default function DashboardPage() {
   const jobLeads          = useQuery(api.jobLeads.list, {})               ?? [];
   const documents         = useQuery(api.dashboard.getDocuments)          ?? [];
   const profile           = useQuery(api.dashboard.getProfile);
+
+  // ── Assistant members ──
+  const allCalendarEvents = useQuery(api.dashboard.getCalendarEvents)     ?? [];
+  const routines          = useQuery(api.memberData.getRoutines)          ?? [];
+  const checkInBoard      = useQuery(api.memberData.getCheckInBoard, { today: dayKey });
+  const memberBriefing    = useQuery(api.memberData.getBriefing, { today: dayKey });
 
   const upsertAccount     = useMutation(api.dashboard.upsertAccount);
   const generateUploadUrl = useMutation(api.dashboard.generateUploadUrl);
@@ -170,6 +195,15 @@ export default function DashboardPage() {
   const updateDocument    = useMutation(api.dashboard.updateDocument);
   const setAvatar         = useMutation(api.dashboard.setAvatar);
   const updateAvatarTransform = useMutation(api.dashboard.updateAvatarTransform);
+
+  // ── Assistant member mutations ──
+  const addTodoDetailed     = useMutation(api.memberData.addTodoDetailed);
+  const setTodoDoneDetailed = useMutation(api.memberData.setTodoDoneDetailed);
+  const setTodoMeta         = useMutation(api.memberData.setTodoMeta);
+  const logRoutinesToToday  = useMutation(api.memberData.logRoutinesToToday);
+  const setRoutineActive    = useMutation(api.memberData.setRoutineActive);
+  const deleteRoutine       = useMutation(api.memberData.deleteRoutine);
+  const saveCheckInRoutine  = useMutation(api.memberData.saveCheckInRoutine);
 
   // ── Derived data ──
   const financesCash        = accounts.filter(a => a.type==="checking"||a.type==="savings").reduce((s,a)=>s+a.balance,0);
@@ -247,6 +281,17 @@ export default function DashboardPage() {
   ).length;
 
   const activeBarCount = bars60.filter(b=>b.active).length;
+
+  // ── Derived assistant-member data ──
+  // Today's calendar slice: an event belongs to today if its start date is today,
+  // or if a multi-day span (date → endDate) covers today. Done events are kept —
+  // the Schedule panel strikes them through rather than hiding them.
+  const todaysEvents = useMemo(() => allCalendarEvents.filter((e) => {
+    if (e.date === dayKey) return true;
+    return !!e.endDate && e.endDate > e.date && e.date < dayKey && dayKey <= e.endDate;
+  }), [allCalendarEvents, dayKey]);
+
+  const memberTodos = todos; // every todo, done and open — the panel buckets them
 
   // Dark mode body class
   useEffect(() => {
@@ -818,6 +863,52 @@ export default function DashboardPage() {
             <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.55)" }}>tap to view & upload</span>
           </div>
         </div>
+
+        {/* ─── Card 11: Assistant members — schedule / to-do / check-in ─── */}
+        <div style={glassMidStyle} {...hoverProps} onClick={() => setShowMembers(true)}>
+          <CardHeader
+            title="Your Team"
+            subtitle="Schedule · To-Do · Check-In"
+            icon={<Users size={20} color={isDark ? "#fff" : "#1a1a1a"} />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
+            {([
+              { tab: "schedule" as MemberTab, label: "Schedule", stat: `${todaysEvents.filter(e => !e.done).length} today`, color: "#3b82f6" },
+              { tab: "todos" as MemberTab, label: "To-Do", stat: `${todosOpen.length} open`, color: "#818cf8" },
+              { tab: "checkin" as MemberTab, label: "Check-In", stat: checkInBoard ? `${checkInBoard.streak.current}d streak` : "—", color: "#e8734a" },
+            ]).map((m) => (
+              <div
+                key={m.tab}
+                onClick={(e) => { e.stopPropagation(); setMemberTab(m.tab); setShowMembers(true); }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.color }} />
+                  <span style={{ fontSize: "0.8rem", color: textMain }}>{m.label}</span>
+                </div>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: textMain }}>{m.stat}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+            <CountBadge count={3} isDark={isDark} />
+            <span style={{ fontSize: "0.75rem", color: textMuted }}>assistants active</span>
+          </div>
+        </div>
+
+        {/* ─── Card 12: Daily briefing ("how am I doing") ─── */}
+        <div style={solidStyle} {...hoverProps} onClick={() => setShowBriefing(true)}>
+          <CardHeader
+            title="Briefing"
+            subtitle="Today at a glance"
+            icon={<Sparkles size={20} />}
+            isDark={isDark}
+          />
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }} className="hide-scrollbar">
+            <DailyBriefingPanel briefing={memberBriefing} isDark={isDark} variant="card" />
+          </div>
+        </div>
       </div>
 
       {/* ── Indicators ── */}
@@ -835,27 +926,42 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* ── Calendar button (fixed top-right) — single entry point; mood Check-In
-             lives inside the calendar's day panel now ── */}
-      <button
-        onClick={() => setShowCalendar(true)}
-        style={{
-          position: "fixed", top: 32, right: 32,
+      {/* ── Fixed top-right actions: briefing, team, calendar ── */}
+      {(() => {
+        const fab: React.CSSProperties = {
           width: 44, height: 44, borderRadius: 14,
-          border: `1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.6)"}`,
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.6)"}`,
           background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
           backdropFilter: "blur(8px)",
           cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-          zIndex: 40,
           transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
           color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.7)",
-        }}
-        title="Calendar & check-in"
-      >
-        <CalendarDays size={19} />
-      </button>
+        };
+        const overdue = memberBriefing?.todos.overdue ?? 0;
+        return (
+          <div style={{ position: "fixed", top: 32, right: 32, display: "flex", gap: 8, zIndex: 40 }}>
+            <button onClick={() => setShowBriefing(true)} style={fab} title="Today's briefing">
+              <Sparkles size={19} />
+              {overdue > 0 && (
+                <span style={{
+                  position: "absolute", top: -4, right: -4, minWidth: 18, height: 18,
+                  borderRadius: 9, background: "#f87171", color: "#fff",
+                  fontSize: "0.65rem", fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
+                }}>{overdue}</span>
+              )}
+            </button>
+            <button onClick={() => setShowMembers(true)} style={fab} title="Your assistants">
+              <Users size={19} />
+            </button>
+            <button onClick={() => setShowCalendar(true)} style={fab} title="Calendar & check-in">
+              <CalendarDays size={19} />
+            </button>
+          </div>
+        );
+      })()}
 
       {/* ── Full-view modal ── */}
       {fullViewSection && (
@@ -920,6 +1026,147 @@ export default function DashboardPage() {
               {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} updateTodo={updateTodo} deleteTodo={deleteTodo} reorderTodos={reorderTodos} />}
               {fullViewSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
               {fullViewSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} updateDocument={updateDocument} deleteDocument={deleteDocument} />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Assistant members modal (shared chrome, panels switch by sub-tab) ── */}
+      {showMembers && (
+        <div
+          className="fullview-backdrop"
+          onClick={() => setShowMembers(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 55, display: "flex", flexDirection: "column" }}
+        >
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 28px", height: 76, flexShrink: 0,
+          }}>
+            <button
+              onClick={() => setShowMembers(false)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: "0.85rem", fontWeight: 500, cursor: "pointer",
+                color: textMain,
+                padding: "9px 16px 9px 13px", borderRadius: 100,
+                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
+                backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)"}`,
+                boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+              }}
+            >
+              ← Back
+            </button>
+
+            {/* Sub-tab switcher */}
+            <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 100, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)"}` }}>
+              {([
+                { tab: "schedule" as MemberTab, label: "Schedule" },
+                { tab: "todos" as MemberTab, label: "To-Do" },
+                { tab: "checkin" as MemberTab, label: "Check-In" },
+              ]).map((t) => {
+                const active = memberTab === t.tab;
+                return (
+                  <button
+                    key={t.tab}
+                    onClick={() => setMemberTab(t.tab)}
+                    style={{
+                      padding: "8px 18px", borderRadius: 100, border: "none", cursor: "pointer",
+                      fontSize: "0.82rem", fontWeight: 600,
+                      background: active ? (isDark ? "rgba(255,255,255,0.9)" : "#fff") : "transparent",
+                      color: active ? "#1a1a1a" : textMuted,
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ width: 92 }} />
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto", overflowX: "hidden" }}>
+            <div className="modal-panel-in" onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25 }}>
+              {memberTab === "schedule" && (
+                <ScheduleMemberPanel
+                  dayKey={dayKey}
+                  isDark={isDark}
+                  events={todaysEvents}
+                  routines={routines}
+                  logRoutinesToToday={logRoutinesToToday}
+                  setRoutineActive={setRoutineActive}
+                  deleteRoutine={deleteRoutine}
+                  onAddEvent={() => { setShowMembers(false); setShowCalendar(true); }}
+                  onClose={() => setShowMembers(false)}
+                />
+              )}
+              {memberTab === "todos" && (
+                <TodosMemberPanel
+                  dayKey={dayKey}
+                  isDark={isDark}
+                  todos={memberTodos}
+                  addTodoDetailed={addTodoDetailed}
+                  setTodoDone={setTodoDoneDetailed}
+                  setTodoMeta={setTodoMeta}
+                  deleteTodo={deleteTodo}
+                  onClose={() => setShowMembers(false)}
+                />
+              )}
+              {memberTab === "checkin" && (
+                <CheckinMemberPanel
+                  dayKey={dayKey}
+                  isDark={isDark}
+                  // The board keys check-ins by date (mutations take a date, not an
+                  // id), so `_id` is not a real Id<"checkIns">. The panel only reads
+                  // it as a React list key, so the assertion is display-only.
+                  checkIns={(checkInBoard?.checkIns ?? []) as unknown as Doc<"checkIns">[]}
+                  streak={checkInBoard?.streak ?? { current: 0, longest: 0, status: "no_history" }}
+                  routine={checkInBoard?.routine ?? { morningTime: "08:00", afternoonTime: "14:00", nightTime: "21:00", nudgesEnabled: true }}
+                  briefing={memberBriefing}
+                  saveCheckInRoutine={saveCheckInRoutine}
+                  onOpenCheckIn={() => { setShowMembers(false); setShowCheckIn(true); }}
+                  onClose={() => setShowMembers(false)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Daily briefing modal ── */}
+      {showBriefing && (
+        <div
+          className="fullview-backdrop"
+          onClick={() => setShowBriefing(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 55, display: "flex", flexDirection: "column" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 76, flexShrink: 0 }}>
+            <button
+              onClick={() => setShowBriefing(false)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: "0.85rem", fontWeight: 500, cursor: "pointer", color: textMain,
+                padding: "9px 16px 9px 13px", borderRadius: 100,
+                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.7)",
+                backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.8)"}`,
+              }}
+            >
+              ← Back
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#e8734a", boxShadow: "0 0 12px #e8734a" }} />
+              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: textMain, letterSpacing: "-0.03em" }}>
+                Today's Briefing
+              </span>
+            </div>
+            <div style={{ width: 92 }} />
+          </div>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto", overflowX: "hidden" }}>
+            <div className="modal-panel-in" onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, maxWidth: 640, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25, background: isDark ? "rgba(26,26,26,0.9)" : "rgba(255,255,255,0.92)", borderRadius: 28, padding: 28, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"}` }}>
+              <DailyBriefingPanel briefing={memberBriefing} isDark={isDark} variant="full" />
             </div>
           </div>
         </div>

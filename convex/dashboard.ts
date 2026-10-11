@@ -804,6 +804,11 @@ export const updateCalendarEvent = mutation({
 /**
  * Clamp stored spans whose endDate is before date (end becomes the start day).
  * Nothing is deleted. `dryRun` counts only.
+ *
+ * Kept for data integrity on the legacy "vault" rows and any hand-added events;
+ * it only reads/writes the clamp, so it stays useful regardless of how the row
+ * was created.
+ *
  * CLI: npx convex run dashboard:repairCalendarSpans '{"dryRun":true}'
  *      npx convex run dashboard:repairCalendarSpans '{}'
  */
@@ -816,36 +821,5 @@ export const repairCalendarSpans = mutation({
       for (const e of inverted) await ctx.db.patch(e._id, { endDate: e.date });
     }
     return { matched: inverted.length, repaired: dryRun ? 0 : inverted.length, dryRun: !!dryRun };
-  },
-});
-
-// Re-seed the vault-derived events (manual ones are left alone). Called by
-// scripts/sync-calendar.mjs after parsing the Obsidian vault.
-export const seedCalendarEvents = mutation({
-  args: {
-    events: v.array(
-      v.object({
-        date: v.string(),
-        title: v.string(),
-        note: v.optional(v.string()),
-        link: v.optional(v.string()),
-      })
-    ),
-  },
-  handler: async (ctx, { events }) => {
-    const existing = await ctx.db.query("calendarEvents").collect();
-    // Preserve done state across re-sync: a recurring vault event you marked done on a
-    // given day should stay done after the next sync, without being duplicated.
-    const doneKeys = new Set(
-      existing.filter((e) => e.source === "vault" && e.done).map((e) => `${e.date}|${e.title}`)
-    );
-    for (const doc of existing) {
-      if (doc.source === "vault") await ctx.db.delete(doc._id);
-    }
-    for (const e of events) {
-      const done = doneKeys.has(`${e.date}|${e.title}`) || undefined;
-      await ctx.db.insert("calendarEvents", { ...e, source: "vault", done });
-    }
-    return { count: events.length };
   },
 });
