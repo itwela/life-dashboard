@@ -198,9 +198,11 @@ export default function SchoolSection({ courses, upsertCourse, schoolProgress, s
               </span>
             </div>
             <div className="h-3 rounded-full overflow-hidden" style={{ background: trackFill }}>
-              <div className="h-full rounded-full relative overflow-hidden transition-all duration-700"
-                style={{ width: `${pct}%`, background: "linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)", boxShadow: "0 0 12px rgba(96,165,250,0.6)" }}>
-                <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)", backgroundSize: "200% 100%", animation: "shimmer 2s infinite" }} />
+              <div className="h-full rounded-full relative overflow-hidden"
+                style={{ width: "100%", background: "linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)", boxShadow: "0 0 12px rgba(96,165,250,0.6)", transform: `scaleX(${pct / 100})`, transformOrigin: "left center", transition: "transform var(--dur-base) var(--ease-out)" }}>
+                {/* `shimmer` is defined in app/globals.css and animates translateX
+                    (composited). It referenced a non-existent keyframe before. */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)", animation: "shimmer 2s linear infinite" }} />
               </div>
             </div>
             <p className={`text-xs ${text40}`}>{schoolProgress.termsCompleted} / {schoolProgress.termsTotal} terms completed</p>

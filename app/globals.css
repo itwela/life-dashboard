@@ -10,7 +10,17 @@
   --text-muted: #6b7280;
   --accent: #000000;
   --card-radius: 40px;
-  --transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Motion tokens ──
+     --ease-out deliberately keeps the incumbent house curve rather than the
+     "canonical" cubic-bezier(0.23, 1, 0.32, 1); the two are near-misses and
+     swapping is a deliberate, one-line decision (see plans/README.md). */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-press: 160ms;  /* buttons, press feedback */
+  --dur-fast: 200ms;   /* popovers, small state changes */
+  --dur-base: 300ms;   /* panels, larger state changes */
+  --dur-panel: 500ms;  /* modals */
 }
 
 .dark-mode {
@@ -109,7 +119,9 @@ body {
   font-size: 0.875rem;
   font-weight: 500;
   padding: 10px 24px;
-  transition: var(--transition);
+  transition-property: transform, background-color, border-color, color, opacity;
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--ease-out);
 }
 
 .dark-mode .nav-btn {
@@ -125,23 +137,49 @@ body {
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* Interactive element transitions */
+/* Interactive element transitions.
+   Explicit property list on purpose: `all` animated layout properties off-GPU. */
 button, .card-hover {
-  transition: var(--transition);
+  transition-property: transform, background-color, border-color, color, opacity, box-shadow;
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--ease-out);
 }
 
-/* Card hover */
+/* Card hover.
+   The hover shadow IS animated here, so box-shadow must stay in the transition
+   property list. NOTE: animating box-shadow repaints the card each frame; making
+   it composited needs an unclipped parent wrapper around each card (the cards
+   are `overflow: hidden` and opaque, so a negative-z pseudo-element is both
+   clipped and hidden behind the background). That restructure is deliberately
+   NOT done — see plans/009-known-snaps-left-open.md. */
+.card-hover {
+  position: relative;
+}
 .card-hover:hover {
   transform: translateY(-3px) scale(1.01);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.1),
     0 4px 12px rgba(0, 0, 0, 0.06);
 }
+/* Press feedback: the cards are clickable, so a click should visibly land. */
+.card-hover:active {
+  transform: translateY(-1px) scale(0.98);
+}
 
-/* Voice wave animation */
+/* Voice wave animation — scaleY is composited; the min-height keeps the dot's
+   layout box stable while it scales. */
 @keyframes voice-wave {
-  0%, 100% { height: 4px; }
-  50% { height: 10px; }
+  0%, 100% { transform: scaleY(0.4); }
+  50%      { transform: scaleY(1); }
+}
+
+/* Shimmer sheen for progress fills.
+   Previously referenced from SchoolSection.tsx but never defined, so the effect
+   silently never ran. Animates translateX (composited) rather than
+   background-position, which would repaint. */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
 }
 
 /* Pulse red */
@@ -199,6 +237,21 @@ button, .card-hover {
 
 @media (prefers-reduced-motion: reduce) {
   .modal-panel-in { animation: none; }
+
+  /* Reduced motion means fewer and gentler animations, not zero: drop movement
+     and structural feedback, keep colour/opacity so controls still respond. */
+  button, .card-hover, .nav-btn {
+    transition-property: background-color, border-color, color, opacity;
+  }
+  .card-hover:hover,
+  .card-hover:active { transform: none; }
+
+  /* Decorative infinite loops: stop them entirely. */
+  [style*="voice-wave"],
+  .animate-pulse { animation: none; }
+
+  /* The modal entrance becomes an instant appearance (no slide/scale). */
+  .modal-panel-in { transform: none; }
 }
 
 /* Responsive */

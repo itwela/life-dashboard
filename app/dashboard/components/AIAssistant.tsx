@@ -115,9 +115,11 @@ export default function AIAssistant() {
                     background: "rgba(0,0,0,0.04)", border: "1px solid var(--glass-border)",
                     fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", gap: 4, alignItems: "center",
                   }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--text-muted)", animation: "voice-wave 0.9s ease-in-out infinite" }} />
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--text-muted)", animation: "voice-wave 0.9s ease-in-out 0.2s infinite" }} />
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--text-muted)", animation: "voice-wave 0.9s ease-in-out 0.4s infinite" }} />
+                    {/* Height is a constant 10px layout box; the wave scales it to
+                        0.4 (→ 4px) and back, so only transform animates. */}
+                    <div style={{ width: 5, height: 10, borderRadius: 3, background: "var(--text-muted)", transformOrigin: "center", animation: "voice-wave 0.9s ease-in-out infinite" }} />
+                    <div style={{ width: 5, height: 10, borderRadius: 3, background: "var(--text-muted)", transformOrigin: "center", animation: "voice-wave 0.9s ease-in-out 0.2s infinite" }} />
+                    <div style={{ width: 5, height: 10, borderRadius: 3, background: "var(--text-muted)", transformOrigin: "center", animation: "voice-wave 0.9s ease-in-out 0.4s infinite" }} />
                   </div>
                 </div>
               )}

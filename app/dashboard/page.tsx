@@ -340,7 +340,7 @@ export default function DashboardPage() {
     display: "flex", flexDirection: "column",
     overflow: "hidden", position: "relative",
     cursor: "pointer",
-    transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+    transition: "transform var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out)",
   };
 
   const glassDarkStyle: React.CSSProperties = {
@@ -354,7 +354,7 @@ export default function DashboardPage() {
     display: "flex", flexDirection: "column",
     overflow: "hidden", position: "relative",
     cursor: "pointer",
-    transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+    transition: "transform var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out)",
   };
 
   const glassMidStyle: React.CSSProperties = {
@@ -368,20 +368,16 @@ export default function DashboardPage() {
     display: "flex", flexDirection: "column",
     overflow: "hidden", position: "relative",
     cursor: "pointer",
-    transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+    transition: "transform var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out)",
   };
 
-  const hoverProps = {
-    onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
-      (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px) scale(1.01)";
-      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 40px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06)";
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
-      (e.currentTarget as HTMLDivElement).style.transform = "";
-      (e.currentTarget as HTMLDivElement).style.boxShadow = "";
-    },
-  };
-
+  /**
+   * Card hover is handled by the `.card-hover` class (app/globals.css), not by
+   * inline JS. The class animates only `transform` and cross-fades the shadow on
+   * a pseudo-element via `opacity`; the previous version wrote `box-shadow`
+   * imperatively, which repainted the whole card every frame. Press feedback
+   * (scale on :active) is owned by the CSS class too.
+   */
   const textMain = isDark ? "#fff" : "#1a1a1a";
   const textMuted = isDark ? "#b0b0b0" : "#6b7280";
 
@@ -450,7 +446,7 @@ export default function DashboardPage() {
                 background: "#fff", cursor: "pointer", position: "relative",
                 flexShrink: 0, padding: 4,
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+                transition: "transform var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out)",
               }}
               aria-label="Toggle dark mode"
             >
@@ -542,8 +538,8 @@ export default function DashboardPage() {
 
         {/* ─── Card 1: Check-In / New Entry (glass dark) ─── */}
         <div
+          className="card-hover"
           style={glassDarkStyle}
-          {...hoverProps}
           onClick={() => setShowCheckIn(true)}
         >
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
@@ -562,7 +558,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 2: Projects (solid white) ─── */}
-        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("projects")}>
+        <div className="card-hover" style={solidStyle} onClick={() => setFullViewSection("projects")}>
           <CardHeader
             title="Active Projects"
             subtitle="Sprint Planning"
@@ -583,7 +579,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 3: Fitness / Weekly Insights (solid white + bar chart) ─── */}
-        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("fitness")}>
+        <div className="card-hover" style={solidStyle} onClick={() => setFullViewSection("fitness")}>
           <CardHeader
             title="Weekly Insights"
             subtitle="Workout Activity"
@@ -597,7 +593,6 @@ export default function DashboardPage() {
                 flex: 1, minWidth: 2, borderRadius: 2,
                 background: b.active ? "#3b82f6" : (isDark ? "rgba(255,255,255,0.12)" : "#e5e7eb"),
                 height: `${b.height}%`,
-                transition: "height 0.3s ease",
               }} />
             ))}
           </div>
@@ -633,7 +628,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 4: School (glass dark) ─── */}
-        <div style={glassDarkStyle} {...hoverProps} onClick={() => setFullViewSection("school")}>
+        <div className="card-hover" style={glassDarkStyle} onClick={() => setFullViewSection("school")}>
           <CardHeader
             title="Degree Progress"
             subtitle="WGU · CS Program"
@@ -644,9 +639,11 @@ export default function DashboardPage() {
             {/* Progress bar */}
             <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 100, height: 6, overflow: "hidden" }}>
               <div style={{
-                width: `${wguPct}%`, height: "100%",
+                width: "100%", height: "100%",
                 background: "#3b82f6", borderRadius: 100,
-                transition: "width 0.6s ease",
+                transform: `scaleX(${wguPct / 100})`,
+                transformOrigin: "left center",
+                transition: "transform var(--dur-base) var(--ease-out)",
               }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -675,7 +672,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 5: Reading (solid white) ─── */}
-        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("reading")}>
+        <div className="card-hover" style={solidStyle} onClick={() => setFullViewSection("reading")}>
           <CardHeader
             title="Reading List"
             subtitle="Books & Queue"
@@ -705,7 +702,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 6: Content (glass mid) ─── */}
-        <div style={glassMidStyle} {...hoverProps} onClick={() => setFullViewSection("content")}>
+        <div className="card-hover" style={glassMidStyle} onClick={() => setFullViewSection("content")}>
           <CardHeader
             title="Content Pipeline"
             subtitle="Ideas & Published"
@@ -734,7 +731,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 7: Finances (solid white) ─── */}
-        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("finances")}>
+        <div className="card-hover" style={solidStyle} onClick={() => setFullViewSection("finances")}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <CardHeader
@@ -785,7 +782,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 8: To-Do (dashboard is the source of truth) ─── */}
-        <div style={solidStyle} {...hoverProps} onClick={() => setFullViewSection("todos")}>
+        <div className="card-hover" style={solidStyle} onClick={() => setFullViewSection("todos")}>
           <CardHeader
             title="To-Do"
             subtitle="On this dashboard"
@@ -829,7 +826,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 9: Job Leads (archived leads stay out of these counts) ─── */}
-        <div style={glassMidStyle} {...hoverProps} onClick={() => setFullViewSection("leads")}>
+        <div className="card-hover" style={glassMidStyle} onClick={() => setFullViewSection("leads")}>
           <CardHeader
             title="Job Leads"
             subtitle="Applications & status"
@@ -858,7 +855,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 10: Records (glass dark) ─── */}
-        <div style={glassDarkStyle} {...hoverProps} onClick={() => setFullViewSection("records")}>
+        <div className="card-hover" style={glassDarkStyle} onClick={() => setFullViewSection("records")}>
           <CardHeader
             title="Records"
             subtitle="Diploma · Certs · IDs"
@@ -882,7 +879,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 11: Assistant members — schedule / to-do / check-in ─── */}
-        <div style={glassMidStyle} {...hoverProps} onClick={() => setShowMembers(true)}>
+        <div className="card-hover" style={glassMidStyle} onClick={() => setShowMembers(true)}>
           <CardHeader
             title="Your Team"
             subtitle="Schedule · To-Do · Check-In"
@@ -915,7 +912,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Card 12: Daily briefing ("how am I doing") ─── */}
-        <div style={solidStyle} {...hoverProps} onClick={() => setShowBriefing(true)}>
+        <div className="card-hover" style={solidStyle} onClick={() => setShowBriefing(true)}>
           <CardHeader
             title="Briefing"
             subtitle="Today at a glance"
@@ -953,7 +950,7 @@ export default function DashboardPage() {
           cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-          transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+          transition: "transform var(--dur-press) var(--ease-out), opacity var(--dur-press) var(--ease-out)",
           color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.7)",
         };
         const overdue = memberBriefing?.todos.overdue ?? 0;
