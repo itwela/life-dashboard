@@ -410,13 +410,24 @@ export default function TodosMemberPanel({ dayKey, isDark, todos, addTodoDetaile
                             onClick={() => void setTodoDone({ id: t._id, done: !t.done })}
                             className="w-[18px] h-[18px] rounded-md shrink-0 flex items-center justify-center text-[11px] text-white"
                             style={{
+                              /* Border width is a constant 1.5px in both states so
+                                 only colours animate — border-width is a layout
+                                 property. */
                               border: t.done
-                                ? `1px solid ${ACCENT}`
+                                ? `1.5px solid ${ACCENT}`
                                 : `1.5px solid ${isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)"}`,
                               background: t.done ? ACCENT : "transparent",
+                              transition: "background-color 160ms var(--ease-out), border-color 160ms var(--ease-out)",
                             }}
                           >
-                            {t.done ? "✓" : ""}
+                            {/* The glyph is an element (not a bare text child) so it
+                                can scale+fade in with the fill instead of popping. */}
+                            <span aria-hidden style={{
+                              lineHeight: 1,
+                              opacity: t.done ? 1 : 0,
+                              transform: t.done ? "scale(1)" : "scale(0.6)",
+                              transition: "opacity 160ms var(--ease-out), transform 160ms var(--ease-out)",
+                            }}>✓</span>
                           </button>
 
                           <span

@@ -1,6 +1,6 @@
 # 008 — Add press feedback and give the to-do tick its motion budget
 
-- **Status**: TODO
+- **Status**: DONE (cards + dashboard to-do tick)
 - **Commit**: 7c0b6ca
 - **Severity**: MEDIUM
 - **Category**: Physicality (3) + Missed opportunities (8)

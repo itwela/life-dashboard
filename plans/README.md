@@ -13,13 +13,13 @@ audit above".
 | # | Title | Severity | Status |
 | --- | --- | --- | --- |
 | [001](001-kill-global-transition-all.md) | Stop the global button transition from animating every property | HIGH | TODO |
-| [002](002-layout-property-animations.md) | Stop animating layout properties in the dashboard charts | HIGH | TODO |
+| [002](002-layout-property-animations.md) | Stop animating layout properties in the dashboard charts | HIGH | DONE (partial) |
 | [003](003-per-element-transition-all.md) | Replace per-element `transition: "all"` with explicit property lists | MEDIUM | TODO |
-| [004](004-reduced-motion-gate.md) | Add the missing reduced-motion gate | MEDIUM | TODO |
-| [005](005-member-panel-motion-defects.md) | Fix the dead shimmer and the member-panel motion defects | MEDIUM | TODO |
-| [006](006-modal-interruptibility.md) | Make modal open/close interruptible and reversible | HIGH | TODO |
+| [004](004-reduced-motion-gate.md) | Add the missing reduced-motion gate | MEDIUM | PARTIAL |
+| [005](005-member-panel-motion-defects.md) | Fix the dead shimmer and the member-panel motion defects | MEDIUM | DONE |
+| [006](006-modal-interruptibility.md) | Make modal open/close interruptible and reversible | HIGH | DONE |
 | [007](007-modal-entry-motion.md) | Give the un-animated modals the house entry motion | MEDIUM | TODO |
-| [008](008-direct-manipulation-feedback.md) | Add press feedback and remove the dead to-do transition | MEDIUM | TODO |
+| [008](008-direct-manipulation-feedback.md) | Add press feedback and remove the dead to-do transition | MEDIUM | DONE (partial) |
 | [009](009-known-snaps-left-open.md) | Known snaps deliberately left open | LOW | TODO |
 
 ## Recommended execution order

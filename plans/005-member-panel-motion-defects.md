@@ -1,6 +1,6 @@
 # 005 — Fix the dead shimmer and the member-panel motion defects
 
-- **Status**: PARTIAL
+- **Status**: DONE
 - **Commit**: 7c0b6ca
 - **Severity**: MEDIUM
 - **Category**: Cohesion (7) + Performance (5)
@@ -55,7 +55,12 @@ backdropFilter: "blur(20px) saturate(1.8)",   /* panel, inset: 20px */
 
 Same shape at `components/CalendarView.tsx:229` (`blur(16px)` on `fixed inset-0`) + `:616` (`blur(4px)`).
 
-**5. `checkinTheme.ts` exports a typo'd identifier.** `URBENCY_COLOR` should be `URGENCY_COLOR`. It is used by the check-in panels.
+**5. ~~`checkinTheme.ts` exports a typo'd identifier.~~ FALSE POSITIVE — do not action.**
+The audit reported `URBENCY_COLOR`; verified repo-wide, that identifier appears **0 times**.
+`checkinTheme.ts:12` already exports the correct `URGENCY_COLOR`, consumed by
+`CheckinMemberPanel.tsx:15,155,156,164,165,186,209`. There is nothing to rename.
+(The only occurrences were in this plan's own prose.) Kept as a record so a future
+reader does not "fix" a symbol that does not exist.
 
 ## Target
 
@@ -132,17 +137,16 @@ Note the border is now a constant `1.5px` in both states. The original mixed `1p
 /* full-screen backdrop keeps its background colour only */
 ```
 
-**5. Rename the typo'd export** in `app/dashboard/members/checkin/checkinTheme.ts`:
+**5. (NO-OP — do not execute) Rename the typo'd export** in `app/dashboard/members/checkin/checkinTheme.ts`:
 
 ```ts
 // target
 export const URGENCY_COLOR = { … };
 ```
 
-Then update every importer:
-```bash
-grep -rn "URBENCY_COLOR" app components
-```
+**5. (RETRACTED — no action required)** The `checkinTheme.ts` typo does not exist.
+Verified repo-wide: `grep -rn "URBENCY_COLOR" app components` returns **0 matches**, and
+`checkinTheme.ts` already exports the correct `URGENCY_COLOR`. Nothing to rename.
 
 **6. Narrow `CheckinSections.tsx:504`** — this overlaps plan 003 step 3; if plan 003 has landed, skip.
 
@@ -159,7 +163,7 @@ grep -rn "URBENCY_COLOR" app components
 3. `app/dashboard/components/SchoolSection.tsx:201` — narrow `transition-all duration-700` to `transition: "width 300ms var(--ease-out)"`.
 4. `app/dashboard/members/todos/TodosMemberPanel.tsx:411-420` — replace with the Target version (constant 1.5px border, transition, animated checkmark span).
 5. `app/dashboard/components/CheckInView.tsx:226-227` — delete the `backdropFilter` and `WebkitBackdropFilter` lines from the full-screen backdrop. Leave the panel's blur at :238-239 untouched.
-6. `app/dashboard/members/checkin/checkinTheme.ts` — rename `URBENCY_COLOR` → `URGENCY_COLOR`, then fix every importer found by the grep. Do not rename anything else in that file.
+6. `app/dashboard/members/checkin/checkinTheme.ts` — **nothing to do.** `URGENCY_COLOR` is already correct (verified 0 occurrences of the typo repo-wide).
 7. `app/dashboard/members/checkin/CheckinSections.tsx:504` — apply plan 003 step 3 if not already done.
 8. `app/globals.css:142-145` — apply plan 002's `voice-wave` change if not already done.
 
@@ -178,7 +182,6 @@ grep -rn "URBENCY_COLOR" app components
 - **Deterministic checks**:
   ```bash
   grep -rn "@keyframes shimmer" app/globals.css        # expect 1 match
-  grep -rn "URBENCY_COLOR" app components              # expect 0 matches
   grep -n "backdropFilter" app/dashboard/components/CheckInView.tsx | head -4   # backdrop pair gone, panel kept
   ```
 - **Feel check**: run `npm run dev`, open `/dashboard`, and confirm:
@@ -208,4 +211,5 @@ Executed in-tree by the Lead. What actually landed, and what did not:
 
 **Not landed / deviates**
 - Plan 004 is only **partially** done: the CSS media block was extended (global `button`/`.card-hover`/`.nav-btn` re-scope, `.card-hover` transform + `::after` disabled, `voice-wave`/`animate-pulse` stopped, `.modal-panel-in` transform removed). **The JS-side gate is NOT implemented** — `page.tsx` has no `matchMedia`/state check, because the imperative `hoverProps` that plan 004 step 4 targeted was **deleted** in favour of the `.card-hover` class, so the CSS gate now covers it. The `[style*="voice-wave"]` selector is a fallback: adding a real class (plan 004 step 2) would be cleaner but was not required, since the inline `animation` declaration is the only thing to disable.
-- Plan 005 items **2** (`TodosMemberPanel` checkbox), **4** (double backdrop blur), **5** (`URBENCY_COLOR` rename) and **6** were **not** executed.
+- Items **2** (`TodosMemberPanel` checkbox), **4** (double backdrop blur) and **6** (`CheckinSections.tsx:504`) **were executed** in a later commit.
+- Item **5** was a **false positive** and was correctly skipped: `URGENCY_COLOR` was never a typo.

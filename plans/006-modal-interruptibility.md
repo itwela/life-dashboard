@@ -1,6 +1,6 @@
 # 006 — Make modal open/close interruptible and reversible
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: 7c0b6ca
 - **Severity**: HIGH
 - **Category**: Interruptibility (4)

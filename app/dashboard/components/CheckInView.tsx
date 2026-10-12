@@ -223,8 +223,10 @@ export default function CheckInView({ onClose }: { onClose: () => void }) {
         position: "fixed", inset: 0, zIndex: 50,
         display: "flex", flexDirection: "column",
         background: "rgba(0,0,0,0.35)",
-        backdropFilter: "blur(2px)",
-        WebkitBackdropFilter: "blur(2px)",
+        // No backdrop blur here: the panel below already blurs the same area at
+        // 20px, and a second viewport-sized blur over the autoplaying background
+        // video forces both layers to re-composite every frame. The scrim alone
+        // still dims the content behind.
         fontFamily: "var(--font-inter)",
       }}>
       {/* Inner panel */}

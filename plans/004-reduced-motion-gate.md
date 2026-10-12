@@ -167,4 +167,4 @@ Executed in-tree by the Lead. What actually landed, and what did not:
 
 **Not landed / deviates**
 - Plan 004 is only **partially** done: the CSS media block was extended (global `button`/`.card-hover`/`.nav-btn` re-scope, `.card-hover` transform + `::after` disabled, `voice-wave`/`animate-pulse` stopped, `.modal-panel-in` transform removed). **The JS-side gate is NOT implemented** — `page.tsx` has no `matchMedia`/state check, because the imperative `hoverProps` that plan 004 step 4 targeted was **deleted** in favour of the `.card-hover` class, so the CSS gate now covers it. The `[style*="voice-wave"]` selector is a fallback: adding a real class (plan 004 step 2) would be cleaner but was not required, since the inline `animation` declaration is the only thing to disable.
-- Plan 005 items **2** (`TodosMemberPanel` checkbox), **4** (double backdrop blur), **5** (`URBENCY_COLOR` rename) and **6** were **not** executed.
+- Plan 005 items **2** (`TodosMemberPanel` checkbox), **4** (double backdrop blur), **5** (`URGENCY_COLOR` rename) and **6** were **not** executed.

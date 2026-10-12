@@ -25,6 +25,7 @@ import DailyBriefingPanel from "./components/DailyBriefingPanel";
 import ScheduleMemberPanel from "./members/schedule/ScheduleMemberPanel";
 import TodosMemberPanel from "./members/todos/TodosMemberPanel";
 import CheckinMemberPanel from "./members/checkin/CheckinMemberPanel";
+import { useMountLatch } from "./members/useMountLatch";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,25 @@ export default function DashboardPage() {
   const [memberTab, setMemberTab] = useState<MemberTab>("schedule");
   const [showBriefing, setShowBriefing] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  // Exit animations: these keep each panel mounted for the CSS transition
+  // duration after it closes, instead of unmounting on the same frame.
+  const fullViewLatch = useMountLatch(fullViewSection !== null);
+  const membersLatch = useMountLatch(showMembers);
+  const briefingLatch = useMountLatch(showBriefing);
+
+  /**
+   * The exit animation needs content to animate: if we rendered from
+   * `fullViewSection` directly, closing would null it and the panel would fade
+   * out empty. Remember the last non-null section and keep rendering that until
+   * the latch releases. (Writing state during render like this is React's
+   * supported "derive state from props" escape hatch — no effect, no extra
+   * commit, no flash.)
+   */
+  const [lastSection, setLastSection] = useState<TabKey | null>(null);
+  if (fullViewSection !== null && fullViewSection !== lastSection) {
+    setLastSection(fullViewSection);
+  }
+  const shownSection = fullViewSection ?? lastSection;
   const [showCalendar, setShowCalendar] = useState(false);
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   // The full-view panels zoom 1.25x on desktop for readability, but that overflows a
@@ -140,6 +160,13 @@ export default function DashboardPage() {
   }, []);
   const [closeTimer, setCloseTimer] = useState(true);
   const [netWorthHidden, setNetWorthHidden] = useState(true);
+  /**
+   * Id of the to-do currently showing its completion tick. The row leaves the
+   * list the moment the mutation lands (todosSorted is open-only), so without
+   * this the click got no acknowledgement at all. 160ms is the press-feedback
+   * budget — long enough to read, short enough to still feel immediate.
+   */
+  const [tickingTodoId, setTickingTodoId] = useState<string | null>(null);
 
   // ── Convex data ──
   // Today as a local "YYYY-MM-DD" key (never toISOString — that shifts timezone).
@@ -801,15 +828,32 @@ export default function DashboardPage() {
             ) : todosSorted.map((t) => (
               <div
                 key={t._id}
-                onClick={(e) => { e.stopPropagation(); toggleTodo({ id: t._id, done: !t.done }); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (tickingTodoId === t._id) return; // ignore double-clicks mid-tick
+                  setTickingTodoId(t._id);
+                  window.setTimeout(() => {
+                    toggleTodo({ id: t._id, done: !t.done });
+                    setTickingTodoId(null);
+                  }, 160);
+                }}
                 style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", flexShrink: 0 }}
                 title="Click to complete"
               >
                 <span style={{
                   marginTop: 1, width: 16, height: 16, borderRadius: 6, flexShrink: 0,
                   border: `1.5px solid ${sectionColors.todos}`,
-                  transition: "all 0.2s ease",
-                }} />
+                  background: tickingTodoId === t._id ? sectionColors.todos : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background-color 160ms var(--ease-out), border-color 160ms var(--ease-out)",
+                }}>
+                  <span aria-hidden style={{
+                    fontSize: 11, lineHeight: 1, color: "#fff",
+                    opacity: tickingTodoId === t._id ? 1 : 0,
+                    transform: tickingTodoId === t._id ? "scale(1)" : "scale(0.6)",
+                    transition: "opacity 160ms var(--ease-out), transform 160ms var(--ease-out)",
+                  }}>✓</span>
+                </span>
                 <span style={{
                   fontSize: "0.8rem", color: textMain, lineHeight: 1.35,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -977,8 +1021,10 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* ── Full-view modal ── */}
-      {fullViewSection && (
+      {/* ── Full-view modal ──
+          Mounted through the exit animation; `shownSection` retains the last
+          section so closing never fades out an empty shell. */}
+      {fullViewLatch.mounted && shownSection !== null && (
         <div
           className="fullview-backdrop"
           onClick={() => setFullViewSection(null)}
@@ -1009,7 +1055,7 @@ export default function DashboardPage() {
               ← Back
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: sectionColors[fullViewSection], boxShadow: `0 0 12px ${sectionColors[fullViewSection]}` }} />
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: sectionColors[shownSection], boxShadow: `0 0 12px ${sectionColors[shownSection]}` }} />
               <span style={{ fontSize: "1.25rem", fontWeight: 600, color: textMain, letterSpacing: "-0.03em" }}>
                 {{
                   finances: "Finances",
@@ -1021,7 +1067,7 @@ export default function DashboardPage() {
                   todos: "To-Do",
                   leads: "Job Leads",
                   records: "Records",
-                }[fullViewSection]}
+                }[shownSection]}
               </span>
             </div>
             <div style={{ width: 92 }} />
@@ -1030,23 +1076,23 @@ export default function DashboardPage() {
             {/* zoom scales the whole panel (rem-based text included) 25% up per Itwela's request.
                 stopPropagation so clicks on the panel don't hit the backdrop's close handler;
                 the blank margins around it (and the header space) still dismiss. */}
-            <div className="modal-panel-in" onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25 }}>
-              {fullViewSection==="finances" && <FinancesSection isDark={isDark} accounts={accounts} financeFiles={financeFiles} upsertAccount={upsertAccount} generateUploadUrl={generateUploadUrl} saveFinanceFile={saveFinanceFile} deleteFinanceFile={deleteFinanceFile} />}
-              {fullViewSection==="school"   && <SchoolSection isDark={isDark} courses={courses} upsertCourse={upsertCourse} schoolProgress={wgu} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
-              {fullViewSection==="fitness"  && <WorkoutsSection isDark={isDark} workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
-              {fullViewSection==="reading"  && <ReadingSection isDark={isDark} books={books} upsertBook={upsertBook} />}
-              {fullViewSection==="projects" && <ProjectsSection isDark={isDark} projects={projects} upsertProject={upsertProject} deleteProject={deleteProject} />}
-              {fullViewSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
-              {fullViewSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} updateTodo={updateTodo} deleteTodo={deleteTodo} reorderTodos={reorderTodos} />}
-              {fullViewSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
-              {fullViewSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} updateDocument={updateDocument} deleteDocument={deleteDocument} />}
+            <div className="modal-panel" data-open={fullViewLatch.open} onClick={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25 }}>
+              {shownSection==="finances" && <FinancesSection isDark={isDark} accounts={accounts} financeFiles={financeFiles} upsertAccount={upsertAccount} generateUploadUrl={generateUploadUrl} saveFinanceFile={saveFinanceFile} deleteFinanceFile={deleteFinanceFile} />}
+              {shownSection==="school"   && <SchoolSection isDark={isDark} courses={courses} upsertCourse={upsertCourse} schoolProgress={wgu} setSchoolProgress={setSchoolProgress} seedSchoolData={seedSchoolData} />}
+              {shownSection==="fitness"  && <WorkoutsSection isDark={isDark} workouts={workouts} logWorkout={logWorkout} workoutSchedule={workoutSchedule} workoutMissedDays={workoutMissedDays} addMissedDay={addMissedDay} removeMissedDay={removeMissedDay} />}
+              {shownSection==="reading"  && <ReadingSection isDark={isDark} books={books} upsertBook={upsertBook} />}
+              {shownSection==="projects" && <ProjectsSection isDark={isDark} projects={projects} upsertProject={upsertProject} deleteProject={deleteProject} />}
+              {shownSection==="content"  && <ContentSection isDark={isDark} posts={contentPosts} addContentPost={addContentPost} updateContentPost={updateContentPost} expandContentIdea={expandContentIdea} />}
+              {shownSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} updateTodo={updateTodo} deleteTodo={deleteTodo} reorderTodos={reorderTodos} />}
+              {shownSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
+              {shownSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} updateDocument={updateDocument} deleteDocument={deleteDocument} />}
             </div>
           </div>
         </div>
       )}
 
       {/* ── Assistant members modal (shared chrome, panels switch by sub-tab) ── */}
-      {showMembers && (
+      {membersLatch.mounted && (
         <div
           className="fullview-backdrop"
           onClick={() => setShowMembers(false)}
@@ -1102,7 +1148,7 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto", overflowX: "hidden" }}>
-            <div className="modal-panel-in" onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25 }}>
+            <div className="modal-panel" data-open={membersLatch.open} onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", maxWidth: 1040, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25 }}>
               {memberTab === "schedule" && (
                 <ScheduleMemberPanel
                   dayKey={dayKey}
@@ -1152,7 +1198,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Daily briefing modal ── */}
-      {showBriefing && (
+      {briefingLatch.mounted && (
         <div
           className="fullview-backdrop"
           onClick={() => setShowBriefing(false)}
@@ -1181,7 +1227,7 @@ export default function DashboardPage() {
             <div style={{ width: 92 }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: isNarrow ? "4px 12px 20px" : "4px 28px 28px", overflowY: "auto", overflowX: "hidden" }}>
-            <div className="modal-panel-in" onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, maxWidth: 640, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25, background: isDark ? "rgba(26,26,26,0.9)" : "rgba(255,255,255,0.92)", borderRadius: 28, padding: 28, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"}` }}>
+            <div className="modal-panel" data-open={briefingLatch.open} onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, maxWidth: 640, width: "100%", margin: "0 auto", zoom: isNarrow ? 1 : 1.25, background: isDark ? "rgba(26,26,26,0.9)" : "rgba(255,255,255,0.92)", borderRadius: 28, padding: 28, border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"}` }}>
               <DailyBriefingPanel briefing={memberBriefing} isDark={isDark} variant="full" />
             </div>
           </div>

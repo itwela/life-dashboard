@@ -228,7 +228,34 @@ button, .card-hover {
   background: radial-gradient(150% 100% at 50% -10%, #17171c 0%, #0a0a0d 65%);
 }
 
-/* Modal enter animation */
+/* Modal enter/exit.
+   Driven by a transition + `data-open`, NOT a keyframe animation: a keyframe on a
+   conditionally-rendered node can only animate in (React removes the node before
+   an exit can play), and it restarts from zero if re-triggered. A transition
+   retargets from the current state, so the panel can be reversed mid-flight.
+   `.modal-panel` alone is the closed state; `[data-open="true"]` is the open one.
+   `@starting-style` supplies the pre-insertion state so the element still
+   animates in on first mount. Paired with `useMountLatch`, which holds the node
+   in the DOM for exactly PANEL_TRANSITION_MS on close. */
+.modal-panel {
+  opacity: 0;
+  transform: translateY(14px) scale(0.985);
+  transition:
+    opacity var(--dur-panel) var(--ease-out),
+    transform var(--dur-panel) var(--ease-out);
+}
+@starting-style {
+  .modal-panel {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+.modal-panel[data-open="true"] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Kept for surfaces that still mount conditionally without a latch. */
 @keyframes modal-panel-in {
   from { opacity: 0; transform: translateY(14px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
@@ -237,6 +264,10 @@ button, .card-hover {
 
 @media (prefers-reduced-motion: reduce) {
   .modal-panel-in { animation: none; }
+  .modal-panel {
+    transform: none;
+    transition: opacity var(--dur-panel) var(--ease-out);
+  }
 
   /* Reduced motion means fewer and gentler animations, not zero: drop movement
      and structural feedback, keep colour/opacity so controls still respond. */
