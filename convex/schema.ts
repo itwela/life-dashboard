@@ -233,4 +233,17 @@ export default defineSchema({
     archived: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
   }).index("by_source_lead", ["sourceLeadId"]),
+
+  // Personal savings targets. `target` is optional so a goal can exist before the
+  // amount is decided. `current` is stored as a number (writers default it to 0).
+  // `order` is the dashboard sequence; `by_order` is how the card reads them.
+  savingsGoals: defineTable({
+    name: v.string(),
+    target: v.optional(v.number()),
+    current: v.number(),
+    notes: v.optional(v.string()),
+    order: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_order", ["order"]),
 });

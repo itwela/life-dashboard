@@ -17,6 +17,7 @@ import type * as http from "../http.js";
 import type * as jobLeads from "../jobLeads.js";
 import type * as memberData from "../memberData.js";
 import type * as memberLogic from "../memberLogic.js";
+import type * as savingsGoals from "../savingsGoals.js";
 
 import type {
   ApiFromModules,
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   jobLeads: typeof jobLeads;
   memberData: typeof memberData;
   memberLogic: typeof memberLogic;
+  savingsGoals: typeof savingsGoals;
 }>;
 
 /**

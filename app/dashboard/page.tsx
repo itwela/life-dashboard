@@ -6,7 +6,7 @@ import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
 import {
   Plus, Zap, BarChart2, MoreHorizontal, Wallet, X, Eye, EyeOff, ListChecks, Briefcase, CalendarDays, Award,
-  Sparkles, Users,
+  Sparkles, Users, PiggyBank,
 } from "lucide-react";
 import SchoolSection from "./components/SchoolSection";
 import FinancesSection from "./components/FinancesSection";
@@ -26,11 +26,12 @@ import ScheduleMemberPanel from "./members/schedule/ScheduleMemberPanel";
 import TodosMemberPanel from "./members/todos/TodosMemberPanel";
 import CheckinMemberPanel from "./members/checkin/CheckinMemberPanel";
 import { useMountLatch } from "./members/useMountLatch";
+import SavingsGoalsSection, { SAVINGS_ACCENT, SavingsGoalsCardBody } from "./components/SavingsGoalsSection";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const WGU_DEFAULTS = { totalCU: 119, earnedCU: 43, activeCount: 13, termsCompleted: 5, termsTotal: 11 };
-type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "todos" | "leads" | "records";
+type TabKey = "finances" | "school" | "fitness" | "reading" | "projects" | "content" | "todos" | "leads" | "records" | "savings";
 // Assistant members share one full-view modal, switched by this sub-tab so the
 // panels don't need their own routing.
 type MemberTab = "schedule" | "todos" | "checkin";
@@ -190,6 +191,7 @@ export default function DashboardPage() {
   const jobLeads          = useQuery(api.jobLeads.list, {})               ?? [];
   const documents         = useQuery(api.dashboard.getDocuments)          ?? [];
   const profile           = useQuery(api.dashboard.getProfile);
+  const savingsGoals      = useQuery(api.savingsGoals.getSavingsGoals)   ?? [];
 
   // ── Assistant members ──
   const allCalendarEvents = useQuery(api.dashboard.getCalendarEvents)     ?? [];
@@ -223,6 +225,9 @@ export default function DashboardPage() {
   const updateDocument    = useMutation(api.dashboard.updateDocument);
   const setAvatar         = useMutation(api.dashboard.setAvatar);
   const updateAvatarTransform = useMutation(api.dashboard.updateAvatarTransform);
+  const addSavingsGoal    = useMutation(api.savingsGoals.addSavingsGoal);
+  const updateSavingsGoal = useMutation(api.savingsGoals.updateSavingsGoal);
+  const deleteSavingsGoal = useMutation(api.savingsGoals.deleteSavingsGoal);
 
   // ── Assistant member mutations ──
   const addTodoDetailed     = useMutation(api.memberData.addTodoDetailed);
@@ -356,6 +361,7 @@ export default function DashboardPage() {
     todos:    "#818cf8",
     leads:    "#4a90c4",
     records:  "#a085c4",
+    savings:  SAVINGS_ACCENT,
   };
 
   // ── Card styles ──
@@ -967,6 +973,18 @@ export default function DashboardPage() {
             <DailyBriefingPanel briefing={memberBriefing} isDark={isDark} variant="card" />
           </div>
         </div>
+
+        {/* ─── Card 13: Savings goals ─── */}
+        <div className="card-hover" style={solidStyle} onClick={() => setFullViewSection("savings")}>
+          <CardHeader
+            title="Savings Goals"
+            subtitle="Targets & progress"
+            icon={<PiggyBank size={20} />}
+            isDark={isDark}
+          />
+          <SavingsGoalsCardBody goals={savingsGoals} isDark={isDark} />
+          <CardFooter count={savingsGoals.length || "—"} label="goals" isDark={isDark} />
+        </div>
       </div>
 
       {/* ── Indicators ── */}
@@ -1067,6 +1085,7 @@ export default function DashboardPage() {
                   todos: "To-Do",
                   leads: "Job Leads",
                   records: "Records",
+                  savings: "Savings Goals",
                 }[shownSection]}
               </span>
             </div>
@@ -1086,6 +1105,7 @@ export default function DashboardPage() {
               {shownSection==="todos"    && <TodosSection isDark={isDark} todos={todos} toggleTodo={toggleTodo} updateTodo={updateTodo} deleteTodo={deleteTodo} reorderTodos={reorderTodos} />}
               {shownSection==="leads"    && <JobLeadsFeed isDark={isDark} />}
               {shownSection==="records"  && <RecordsSection isDark={isDark} documents={documents} generateUploadUrl={generateUploadUrl} saveDocument={saveDocument} updateDocument={updateDocument} deleteDocument={deleteDocument} />}
+              {shownSection==="savings"  && <SavingsGoalsSection isDark={isDark} goals={savingsGoals} addSavingsGoal={addSavingsGoal} updateSavingsGoal={updateSavingsGoal} deleteSavingsGoal={deleteSavingsGoal} />}
             </div>
           </div>
         </div>
